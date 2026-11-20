@@ -113,19 +113,19 @@ sequenceDiagram
   autonumber
   participant Src as Source / Simulator
   participant Col as Collector
-  participant Box as Outbox SQLite
+  participant OB as Outbox SQLite
   participant API as SaaS Ingest
   participant DB as Postgres RLS
   participant AI as AIOps
   participant UI as Dashboard
   Src->>Col: POST /api/v1/telemetry raw events
   Col->>Col: validate, store raw, scrub, aggregate
-  Col->>Box: BEGIN; ledger + outbox insert; COMMIT
+  Col->>OB: one transaction - ledger row and outbox row
   Col->>API: POST /api/v1/ingest/ap-south batch, Bearer token
   API->>API: verify token, bind tenant, revalidate
   API->>DB: INSERT ON CONFLICT DO NOTHING
   API-->>Col: 200 accepted / duplicate / rejected
-  Col->>Box: mark delivered
+  Col->>OB: mark delivered
   API->>AI: new summaries
   AI->>DB: health transitions, alerts, incidents
   AI-->>UI: WebSocket event, tenant channel
@@ -138,23 +138,23 @@ sequenceDiagram
 sequenceDiagram
   autonumber
   participant Col as Collector
-  participant Box as Outbox
+  participant OB as Outbox
   participant API as SaaS
   participant Mon as Offline monitor
   participant UI as Dashboard
   Col->>API: batch N
   API--xCol: connection refused / timeout
-  Col->>Box: keep pending, attempts++
+  Col->>OB: keep pending, attempts++
   Note over Col: backoff 1s, 2s, 4s ... max 30s, +/-20% jitter
   loop every window
-    Col->>Box: new summaries enqueued
+    Col->>OB: new summaries enqueued
   end
   Note over Mon: if SaaS stays up but collector link is down, heartbeat age exceeds 30s
   Mon->>UI: collector state Poor, reason HEARTBEAT_MISSING
   API-->>Col: reachable again
   Col->>API: drain oldest first, 500 per batch
   API-->>Col: accepted + duplicate lists
-  Col->>Box: mark delivered
+  Col->>OB: mark delivered
   Col->>API: reconciliation report: sent ID count + hash
   API-->>UI: recovery event, missing 0, duplicates 0
 ```

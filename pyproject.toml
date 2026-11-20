@@ -1,0 +1,39 @@
+[project]
+name = "aegis"
+version = "0.1.0"
+description = "AEGIS workspace root (not a deployable package)"
+requires-python = ">=3.11,<3.12"
+dependencies = ["aegis-contracts", "aegis-saas-api", "aegis-collector"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/contracts", "apps/saas-api", "apps/collector"]
+
+[tool.uv.sources]
+aegis-contracts = { workspace = true }
+aegis-saas-api = { workspace = true }
+aegis-collector = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8", "httpx>=0.28"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["apps/web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "N", "SIM"]
+ignore = ["S101"]  # assert is fine in tests
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S105", "S106", "S108", "E501"]
+"apps/saas-api/alembic/**" = ["S608"]
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib -q"
+testpaths = ["packages/contracts/tests", "apps/saas-api/tests", "apps/collector/tests", "simulator/tests", "tests/architecture"]
+pythonpath = ["."]
+markers = ["integration: requires the local Postgres container (AEGIS_TEST_DB_ADMIN_URL)"]

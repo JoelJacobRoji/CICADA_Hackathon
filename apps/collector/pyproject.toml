@@ -1,0 +1,22 @@
+[project]
+name = "aegis-collector"
+version = "0.1.0"
+description = "AEGIS local collector (Tier 1): raw data stays here"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "aegis-contracts",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic-settings>=2.6",
+  "structlog>=24.4",
+  "httpx>=0.28",
+  "psutil>=6.1",
+  "pyyaml>=6.0.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aegis_collector"]

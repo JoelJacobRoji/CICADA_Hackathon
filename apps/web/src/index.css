@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --color-surface: #1f2733;
+  --color-surface-raised: #2a3442;
+  --color-ink: #e8edf3;
+  --color-ink-muted: #9aa7b6;
+  --color-accent: #5fb3a8;
+}
+
+html,
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
