@@ -21,7 +21,13 @@ def col_env(monkeypatch, tmp_path):
         monkeypatch.setenv(k, v)
     monkeypatch.setenv("AEGIS_COL_DB_PATH", str(tmp_path / "collector.db"))
     monkeypatch.setenv("AEGIS_COL_FLUSH_INTERVAL_SECONDS", "5")  # tests flush explicitly
+    # ISOLATION: never let a collector under test reach a real SaaS, whatever the local .env says.
+    monkeypatch.setenv("AEGIS_COL_COLLECTOR_TOKEN", "")  # empty -> sender disabled
+    monkeypatch.setenv("AEGIS_COL_SAAS_BASE_URL", "http://127.0.0.1:9")  # discard port
+    monkeypatch.setenv("AEGIS_COL_COLLECTOR_ID", "col_test_01")
     get_settings.cache_clear()
+    s = get_settings()
+    assert s.collector_token is None and s.saas_base_url.startswith("http://127.0.0.1")
     yield tmp_path
     get_settings.cache_clear()
 

@@ -9,6 +9,7 @@ from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 APP_DIR = Path(__file__).resolve().parents[2]  # apps/saas-api
+REPO_CONFIG = APP_DIR.parents[1] / "config"
 
 REGIONS: tuple[str, ...] = ("ap-south", "eu-west")
 
@@ -49,6 +50,11 @@ class Settings(BaseSettings):
     ingest_max_bytes: int = Field(default=1_048_576, ge=1024, le=8_388_608)
     late_after_seconds: float = Field(default=30.0, ge=1)
     offline_after_seconds: float = Field(default=30.0, ge=5)
+
+    # Health engine
+    thresholds_path: Path = REPO_CONFIG / "health_thresholds.yaml"
+    health_sweep_interval_seconds: float = Field(default=5.0, ge=0.5, le=60)
+    health_persist_interval_seconds: float = Field(default=1.0, ge=0.2, le=30)
 
     @field_validator("jwt_signing_key")
     @classmethod

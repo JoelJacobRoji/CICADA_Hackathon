@@ -105,6 +105,12 @@ def _migrate_region(region: str) -> None:
 
 
 def _clear_caches() -> None:
+    from saas_api.auth.collector import clear_auth_cache
+
+    clear_auth_cache()
+    from saas_api.health import runtime as health_runtime
+
+    health_runtime.reset()
     from saas_api.db import owner_engine
 
     for eng_cache in (app_engine, owner_engine):

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import threading
+import time
 import uuid
 from dataclasses import dataclass
 
@@ -37,14 +39,37 @@ def _unauthorized() -> HTTPException:
     )
 
 
+AUTH_CACHE_TTL_S = 30.0  # revocation takes effect within this window (documented, K22)
+_cache: dict[tuple[str, str], tuple[CollectorCtx, float]] = {}
+_cache_lock = threading.Lock()
+
+
+def clear_auth_cache() -> None:
+    with _cache_lock:
+        _cache.clear()
+
+
 def resolve_collector(region: str, token: str) -> CollectorCtx | None:
+    """Positive results are cached for AUTH_CACHE_TTL_S, keyed by (region, token SHA-256).
+    Failures are never cached, so a newly registered collector works immediately."""
+    key = (region, hash_token(token))
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(key)
+        if hit and hit[1] > now:
+            return hit[0]
     with identity_connection(region) as conn:
-        row = conn.execute(
-            text("SELECT * FROM authenticate_collector(:h)"), {"h": hash_token(token)}
-        ).first()
+        row = conn.execute(text("SELECT * FROM authenticate_collector(:h)"), {"h": key[1]}).first()
     if row is None or row.status != "active" or row.region != region:
+        with _cache_lock:
+            _cache.pop(key, None)
         return None
-    return CollectorCtx(row.collector_id, row.tenant_id, row.region)
+    ctx = CollectorCtx(row.collector_id, row.tenant_id, row.region)
+    with _cache_lock:
+        if len(_cache) > 10_000:
+            _cache.clear()
+        _cache[key] = (ctx, now + AUTH_CACHE_TTL_S)
+    return ctx
 
 
 def require_collector(

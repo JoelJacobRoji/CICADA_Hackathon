@@ -178,3 +178,30 @@ KIND_TABLE = {
     "security_summary": security_summaries,
     "topology_edge": topology_edges,
 }
+
+health_current = Table(
+    "health_current",
+    metadata,
+    Column("tenant_id", UUID(as_uuid=True), primary_key=True),
+    Column("entity_type", Text, primary_key=True),
+    Column("entity_id", Text, primary_key=True),
+    Column("state", Text),
+    Column("reasons", JSONB),
+    _ts("since"),
+    _ts("updated_at"),
+    _ts("last_event_time", True),
+)
+
+health_transitions = Table(
+    "health_transitions",
+    metadata,
+    Column("id", BigInteger, primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True)),
+    Column("entity_type", Text),
+    Column("entity_id", Text),
+    Column("from_state", Text),
+    Column("to_state", Text),
+    _ts("at_utc"),
+    _ts("event_time", True),
+    Column("reasons", JSONB),
+)

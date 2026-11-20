@@ -63,6 +63,11 @@ class CollectorSettings(BaseSettings):
             raise ValueError("collector must bind to a loopback address")
         return v
 
+    @field_validator("collector_token", mode="before")
+    @classmethod
+    def _empty_token_is_none(cls, v: object) -> object:
+        return None if v in ("", None) else v
+
     @field_validator("local_admin_token", "pseudonym_secret", "ingest_token")
     @classmethod
     def _strong(cls, v: SecretStr) -> SecretStr:

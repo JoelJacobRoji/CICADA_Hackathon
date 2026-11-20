@@ -25,14 +25,15 @@ from aegis_contracts.outbound import (
 )
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import Field, TypeAdapter, ValidationError
-from sqlalchemy import insert, update
+from sqlalchemy import text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from starlette.concurrency import run_in_threadpool
 
 from .auth.collector import CollectorCtx, require_collector
 from .config import get_settings
-from .db import tenant_connection
-from .repo import KIND_TABLE, collectors, heartbeats, ingest_receipts
+from .db import autocommit_connection, tenant_connection
+from .health import runtime as health
+from .repo import KIND_TABLE, collectors, heartbeats
 from .ws import hub
 
 log = structlog.get_logger("saas.ingest")
@@ -107,42 +108,66 @@ def _store(ctx: CollectorCtx, env: _Envelope, body_sha: str) -> tuple[IngestAck,
         sha = hashlib.sha256(model.model_dump_json().encode("utf-8")).hexdigest()
         rows[model.kind].append(_row(model, ctx.tenant_id, sha, now, s.late_after_seconds))
 
-    accepted: list[uuid.UUID] = []
-    published: list[dict] = []
-    with tenant_connection(ctx.region, ctx.tenant_id) as conn:
-        for kind, kind_rows in rows.items():
-            if not kind_rows:
-                continue
-            table = KIND_TABLE[kind]
-            stmt = (
-                pg_insert(table)
-                .values(kind_rows)
-                .on_conflict_do_nothing(index_elements=["tenant_id", "payload_id"])
-                .returning(table.c.payload_id)
-            )
-            new_ids = {r[0] for r in conn.execute(stmt)}
-            accepted.extend(new_ids)
-            if kind != "topology_edge":
-                published.extend(
-                    {"type": kind, **r} for r in kind_rows if r["payload_id"] in new_ids
-                )
-        all_ids = [r["payload_id"] for rs in rows.values() for r in rs]
-        duplicate = [p for p in all_ids if p not in set(accepted)]
-        conn.execute(
-            insert(ingest_receipts).values(
-                tenant_id=ctx.tenant_id,
-                collector_id=ctx.collector_id,
-                batch_id=env.batch_id,
-                body_sha256=body_sha,
-                accepted=len(accepted),
-                duplicate=len(duplicate),
-                rejected=len(rejected),
-            )
-        )
+    # ONE round trip (K22): aegis.ingest_batch runs as aegis_app (RLS applies), sets the tenant
+    # context from the AUTHENTICATED tenant, inserts everything idempotently, writes the receipt.
+    with autocommit_connection(ctx.region) as conn:
+        new_ids = conn.execute(
+            _INGEST_SQL(),
+            {
+                "t": str(ctx.tenant_id),
+                "c": ctx.collector_id,
+                "b": str(env.batch_id),
+                "h": body_sha,
+                "r": len(rejected),
+                "m": _jsonb(rows["metric_summary"]),
+                "s": _jsonb(rows["security_summary"]),
+                "e": _jsonb(rows["topology_edge"]),
+            },
+        ).scalar_one()
+    accepted_set = {uuid.UUID(str(x)) for x in (new_ids or [])}
+    all_ids = [r["payload_id"] for rs in rows.values() for r in rs]
+    accepted = [p for p in all_ids if p in accepted_set]
+    duplicate = [p for p in all_ids if p not in accepted_set]
+    published = [
+        {"type": kind, **r}
+        for kind in ("metric_summary", "security_summary")
+        for r in rows[kind]
+        if r["payload_id"] in accepted_set
+    ]
     ack = IngestAck(
         batch_id=env.batch_id, accepted=accepted, duplicate=duplicate, rejected=rejected
     )
     return ack, published
+
+
+def _evaluate_health(ctx: CollectorCtx, published: list[dict]) -> list:
+    eng = health.engine()
+    metrics = [r for r in published if r["type"] == "metric_summary"]
+    security = [r for r in published if r["type"] == "security_summary"]
+    out = eng.observe_metrics(ctx.tenant_id, ctx.region, metrics) if metrics else []
+    if security:
+        out += eng.observe_security(ctx.tenant_id, ctx.region, security)
+    return out
+
+
+def _jsonb(rows: list[dict]) -> str:
+    return json.dumps(rows, default=_json_default, separators=(",", ":"))
+
+
+def _json_default(o: Any) -> Any:
+    if isinstance(o, datetime):
+        return o.isoformat()
+    if isinstance(o, uuid.UUID):
+        return str(o)
+    raise TypeError(type(o).__name__)
+
+
+def _INGEST_SQL():  # noqa: N802 - built lazily so the schema name comes from settings
+    s = get_settings().db_schema
+    return text(
+        f"SELECT {s}.ingest_batch(CAST(:t AS uuid), :c, CAST(:b AS uuid), :h, :r,"
+        " CAST(:m AS jsonb), CAST(:s AS jsonb), CAST(:e AS jsonb))"
+    )
 
 
 def _event(r: dict) -> dict:
@@ -190,9 +215,13 @@ def build_router() -> APIRouter:
             duplicate=len(ack.duplicate),
             rejected=len(ack.rejected),
         )
+        transitions = await run_in_threadpool(_evaluate_health, ctx, published)
+        health.writer.enqueue(transitions)
         if hub.subscribers(ctx.tenant_id):
             for r in published:
                 await hub.publish(ctx.tenant_id, _event(r))
+            for t in transitions:
+                await hub.publish(ctx.tenant_id, t.as_event())
         return ack
 
     @router.post("/api/v1/heartbeat/{region}", status_code=204)
@@ -244,6 +273,12 @@ def build_router() -> APIRouter:
                 )
 
         await run_in_threadpool(_save)
+        transitions = health.engine().observe_heartbeat(
+            ctx.tenant_id, ctx.region, ctx.collector_id, health.facts_from_heartbeat(hb)
+        )
+        health.writer.enqueue(transitions)
+        for t in transitions:
+            await hub.publish(ctx.tenant_id, t.as_event())
         if hub.subscribers(ctx.tenant_id):
             await hub.publish(
                 ctx.tenant_id,

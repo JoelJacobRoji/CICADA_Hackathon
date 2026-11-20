@@ -25,7 +25,10 @@ def _normalise(url: str) -> str:
 def build_engine(url: str) -> Engine:
     return create_engine(
         _normalise(url),
-        pool_pre_ping=True,
+        # No pre-ping: it costs a full round trip per checkout (242 ms VPS->Mumbai, K22).
+        # Recycle instead, so pooler-side idle closes are avoided rather than probed.
+        pool_pre_ping=False,
+        pool_recycle=120,
         pool_size=5,
         max_overflow=5,
         # Safe behind Supabase/PgBouncer poolers (no server-side prepared statements).
@@ -59,6 +62,14 @@ def tenant_connection(region: str, tenant_id: uuid.UUID) -> Iterator[Connection]
     """
     with app_engine(region).begin() as conn:
         conn.execute(_SET_CTX, {"t": str(tenant_id), "s": get_settings().db_schema})
+        yield conn
+
+
+@contextmanager
+def autocommit_connection(region: str) -> Iterator[Connection]:
+    """App-role connection in autocommit mode: no BEGIN/COMMIT round trips. Use ONLY for single
+    statements that set their own tenant context (e.g. aegis.ingest_batch)."""
+    with app_engine(region).connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
         yield conn
 
 

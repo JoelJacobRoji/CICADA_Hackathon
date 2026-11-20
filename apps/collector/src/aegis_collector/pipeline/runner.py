@@ -52,6 +52,7 @@ class Pipeline:
         self.fingerprints = SecretFingerprints()
         self.egress = Egress(conn, self.fingerprints)
         self.stats: Counter[str] = Counter()
+        self.closed = False
 
     # ---------------- ingest ----------------
 
@@ -88,6 +89,8 @@ class Pipeline:
             parsed.append(rec)
 
         with self.lock:
+            if self.closed:
+                raise RuntimeError("collector is shutting down")
             self.fingerprints.add_many(secrets)  # hashes only, in memory
             if rows:
                 c = self.conn
@@ -134,6 +137,8 @@ class Pipeline:
 
     def flush(self, now: datetime | None = None, force: bool = False) -> int:
         with self.lock:
+            if self.closed:
+                return 0
             results = self.agg.flush(now or datetime.now(UTC), force=force)
             builders: list[Builder] = []
             for w in results:

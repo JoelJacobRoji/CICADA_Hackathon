@@ -186,3 +186,25 @@ def test_no_route_accepts_raw_inbound_records(api):
     for r in post_routes:
         for p in r.dependant.body_params:
             assert "MetricEvent" not in repr(p.type_) and "LogEvent" not in repr(p.type_)
+
+
+def test_revocation_takes_effect_after_auth_cache_ttl(api, seeded, monkeypatch):
+    import time
+
+    from saas_api.auth import collector as col_auth
+
+    monkeypatch.setattr(col_auth, "AUTH_CACHE_TTL_S", 0.5)
+    a = seeded["acme"]
+    assert post(api, "ap-south", a["token"], [metric(a["collector_id"], 0)]).status_code == 200
+    adm.revoke_collector(a["collector_id"])
+    # Within the TTL the cached identity is still honoured (documented revocation window)...
+    assert post(api, "ap-south", a["token"], [metric(a["collector_id"], 1)]).status_code == 200
+    time.sleep(0.6)
+    # ...after it, the revocation is enforced.
+    assert post(api, "ap-south", a["token"], [metric(a["collector_id"], 2)]).status_code == 401
+
+
+def test_failed_auth_is_never_cached(api, seeded):
+    a = seeded["acme"]
+    assert post(api, "ap-south", "y" * 43, [metric(a["collector_id"])]).status_code == 401
+    assert post(api, "ap-south", a["token"], [metric(a["collector_id"])]).status_code == 200

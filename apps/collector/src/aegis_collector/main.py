@@ -157,10 +157,17 @@ def create_app() -> FastAPI:
             for t in tasks:
                 with contextlib.suppress(asyncio.CancelledError):
                     await t
-            pipeline.flush(force=True)  # don't lose open windows on shutdown
+            # Clean shutdown: stop the sender and wait for in-flight batches, then flush and
+            # close the DB while HOLDING the pipeline lock, so no other thread can be inside
+            # a SQLite call when the connection closes (use-after-close crashed on Windows).
+            if app.state.sender is not None:
+                await run_in_threadpool(app.state.sender.stop)
+            with pipeline.lock:
+                pipeline.flush(force=True)  # don't lose open windows on shutdown
+                pipeline.closed = True
+                conn.close()
             if http_client is not None:
                 http_client.close()
-            conn.close()
 
     app = FastAPI(
         title="AEGIS Collector (local)",

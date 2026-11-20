@@ -14,6 +14,7 @@ import random
 import sqlite3
 import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -50,6 +51,7 @@ class Sender:
         region: str,
         token: str,
         batch_size: int = 500,
+        concurrency: int = 2,
     ):
         self.conn = conn
         self.lock = lock
@@ -57,9 +59,13 @@ class Sender:
         self.region = region
         self.token = token
         self.batch_size = batch_size
+        self.concurrency = concurrency
         self.state = "ok"
         self.paused_until: datetime | None = None
         self.last_error: str | None = None
+        self.stopped = False
+        self._active = 0
+        self._cv = threading.Condition()
 
     # ---------- DB helpers (always under lock) ----------
 
@@ -133,7 +139,25 @@ class Sender:
 
     # ---------- main step ----------
 
+    def stop(self, timeout: float = 15.0) -> bool:
+        """Stop claiming new batches and wait for in-flight ones (clean shutdown)."""
+        self.stopped = True
+        with self._cv:
+            return self._cv.wait_for(lambda: self._active == 0, timeout)
+
     def send_once(self) -> SendResult:
+        if self.stopped:
+            return SendResult(status="idle")
+        with self._cv:
+            self._active += 1
+        try:
+            return self._send_once()
+        finally:
+            with self._cv:
+                self._active -= 1
+                self._cv.notify_all()
+
+    def _send_once(self) -> SendResult:
         now = datetime.now(UTC)
         if self.paused_until and now < self.paused_until:
             return SendResult(status=self.state)
@@ -185,18 +209,22 @@ class Sender:
         self.state, self.last_error, self.paused_until = "ok", None, None
         return res
 
-    def drain(self, max_batches: int = 1000) -> SendResult:
+    def drain(self, max_batches: int = 1000, concurrency: int | None = None) -> SendResult:
+        """Send until the outbox is idle. Up to `concurrency` batches in flight (K22): claims are
+        taken under the lock and marked 'sending', so concurrent batches never overlap."""
+        n = concurrency or self.concurrency
         total = SendResult(status="idle")
-        for _ in range(max_batches):
-            r = self.send_once()
-            if r.status == "idle":
-                break
-            total.sent += r.sent
-            total.accepted += r.accepted
-            total.duplicate += r.duplicate
-            total.rejected += r.rejected
-            total.retried += r.retried
-            total.status = r.status
-            if r.status != "ok":
-                break
+        with ThreadPoolExecutor(max_workers=n, thread_name_prefix="aegis-send") as pool:
+            for _ in range(max(1, max_batches // n)):
+                results = list(pool.map(lambda _i: self.send_once(), range(n)))
+                busy = [r for r in results if r.status != "idle"]
+                for r in busy:
+                    total.sent += r.sent
+                    total.accepted += r.accepted
+                    total.duplicate += r.duplicate
+                    total.rejected += r.rejected
+                    total.retried += r.retried
+                    total.status = r.status if total.status in ("idle", "ok") else total.status
+                if not busy or any(r.status != "ok" for r in busy):
+                    break
         return total

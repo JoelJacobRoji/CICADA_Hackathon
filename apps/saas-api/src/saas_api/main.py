@@ -1,17 +1,34 @@
-"""AEGIS SaaS API entrypoint (Phase 2: foundation only - no ingest yet)."""
+"""AEGIS SaaS API entrypoint (Tier 2: metadata-only, multi-tenant)."""
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import __version__, ingest, read_api, ws
+from . import __version__, health_api, ingest, read_api, ws
 from .config import REGIONS, get_settings
 from .db import ping
+from .health import runtime as health
 from .logs import configure_logging, get_logger
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Health sweeper (staleness, offline collectors) + write-behind persistence.
+    task = asyncio.create_task(health.run_background(ws.hub.publish))
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 def create_app() -> FastAPI:
@@ -25,6 +42,7 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.env != "prod" else None,
         redoc_url=None,
         openapi_url="/openapi.json" if settings.env != "prod" else None,
+        lifespan=_lifespan,
     )
     app.add_middleware(
         CORSMiddleware,
@@ -55,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(ingest.build_router())
     app.include_router(read_api.build_router())
     app.include_router(ws.build_router())
+    app.include_router(health_api.build_router())
 
     log.info("saas_api_started", env=settings.env, regions=list(REGIONS))
     return app
