@@ -1,8 +1,9 @@
 import { useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { STATES, type HealthSummary, type LiveEvent, type Transition } from '../api/types'
+import { STATES, type AiopsSummary, type HealthSummary, type IncidentRow, type LiveEvent, type Transition } from '../api/types'
 import { useApi } from '../api/useApi'
 import { Card, Empty, ErrorNote, Loading, Reasons, StatTile, TimeAgo } from '../components/common'
+import { PriorityBadge } from '../components/Priority'
 import { StateBadge, stateMeaning } from '../components/StateBadge'
 import { describeReason, kindLabel, shortId } from '../lib/format'
 import { live } from '../live/live'
@@ -10,16 +11,24 @@ import { live } from '../live/live'
 export function Overview() {
   const summary = useApi<HealthSummary>('/api/v1/health/summary', 10000)
   const transitions = useApi<Transition[]>('/api/v1/health/transitions?limit=15', 15000)
+  const aiops = useApi<AiopsSummary>('/api/v1/aiops/summary', 15000)
+  const openInc = useApi<IncidentRow[]>('/api/v1/incidents?status=open&limit=5', 15000)
   const reloadS = summary.reload
   const reloadT = transitions.reload
+  const reloadA = aiops.reload
+  const reloadI = openInc.reload
   const onEvent = useCallback(
     (e: LiveEvent) => {
       if (e.type === 'health_transition') {
         reloadS()
         reloadT()
       }
+      if (e.type === 'incident') {
+        reloadA()
+        reloadI()
+      }
     },
-    [reloadS, reloadT],
+    [reloadS, reloadT, reloadA, reloadI],
   )
   useEffect(() => live.subscribe(onEvent), [onEvent])
 
@@ -59,6 +68,33 @@ export function Overview() {
       {totalSrc === 0 && totalCol === 0 && (
         <Empty>No telemetry yet. Start a collector (and the simulator) to see live health here.</Empty>
       )}
+
+      <Card title="Open incidents" actions={<Link to="/incidents">Incident center →</Link>}>
+        {aiops.data && (
+          <p className="row">
+            <span><PriorityBadge p="P1" /> {aiops.data.open_by_priority.P1}</span>
+            <span><PriorityBadge p="P2" /> {aiops.data.open_by_priority.P2}</span>
+            <span><PriorityBadge p="P3" /> {aiops.data.open_by_priority.P3}</span>
+            <span className="muted">
+              noise reduction {aiops.data.noise_reduction_ratio ? `${aiops.data.noise_reduction_ratio} : 1` : '-'}
+              {' '}({aiops.data.alert_signals_total} alert signals → {aiops.data.incidents_total} incidents)
+            </span>
+          </p>
+        )}
+        {!openInc.data ? <Loading /> : openInc.data.length === 0 ? (
+          <Empty>No open incidents.</Empty>
+        ) : (
+          <ul className="attention">
+            {openInc.data.map((i) => (
+              <li key={i.id}>
+                <PriorityBadge p={i.priority} />
+                <Link to={`/incidents/${i.id}`}>{i.title}</Link>
+                <span className="muted">{i.alert_count} signals · <TimeAgo iso={i.updated_at} /></span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <div className="grid-2">
         <Card title="Needs attention">

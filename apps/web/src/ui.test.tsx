@@ -117,3 +117,91 @@ describe('no fake operational data', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------- Phase 6: incidents
+const PID = 'src_' + 'ab12cd34ef56ab78'
+function incident(ai: unknown) {
+  const now = new Date().toISOString()
+  return {
+    id: 'i-1', status: 'open', priority: 'P1', score: 18, title: 'Network device src_ab12cd… degraded',
+    root_entity: PID, opened_at: now, updated_at: now, resolved_at: null, acked_at: null, acked_by: null,
+    version: 3,
+    explanation: {
+      title: 't', status: 'open', detection_methods: ['robust_z'],
+      correlation: [{ rule: 'NEW', detail: 'no matching open incident' }],
+      probable_cause: { entity: PID, entity_kind: 'network_device', status: 'determined', basis: 'single affected source' },
+      evidence_strength: { level: 'High', reasons: ['persisted for 3+ windows'], definition: 'Not a probability.' },
+      priority: { label: 'P1', score: 18, components: { severity_weight: 8 }, note: 'ranking heuristic, not a probability' },
+      uncertainty: ['Single signal so far'],
+      recommendations: [{ id: 'R1', title: 'Investigate upstream device', steps: ['Check link'], rationale: 'it alerted first', evidence: ['a-1'] }],
+      affected_entities: [PID],
+    },
+    alerts: [{ id: 'a-1', entity_type: 'source', entity_id: PID, collector_id: 'col_x_01', metric: 'latency_ms',
+      family: 'BASELINE', code: 'BASELINE_DEVIATION', severity: 'high', status: 'open', onset: now, first_seen: now,
+      last_seen: now, occurrences: 4, dedup_hits: 3,
+      evidence: { observed: 300, unit: 'ms', baseline_median: 20, z: 94.5, z_threshold: 3.5, history_n: 50 } }],
+    ai,
+    notifications: [{ collector_id: 'col_x_01', kind: 'incident', incident_version: 3, created_at: now, delivered_at: now, acked_at: now }],
+  }
+}
+
+async function renderDetail(ai: unknown) {
+  const { IncidentDetail } = await import('./pages/IncidentDetail')
+  const { Route, Routes } = await import('react-router-dom')
+  mockFetch({ '/api/v1/incidents/i-1': incident(ai) })
+  render(
+    <MemoryRouter initialEntries={['/incidents/i-1']}>
+      <Routes><Route path="/incidents/:id" element={<IncidentDetail />} /></Routes>
+    </MemoryRouter>,
+  )
+}
+
+describe('Incident detail', () => {
+  it('shows evidence, probable cause, cited recommendations and a grounded AI explanation with its prompt', async () => {
+    await renderDetail({
+      incident_version: 3, created_at: '', provider: 'gemini', model: 'gemini-x', status: 'ok', latency_ms: 3100,
+      prompt: { system: 's', user: 'EVIDENCE JSON: {...}' }, grounding: { ok: true, violations: [] },
+      response: { summary: 'The network device degraded first.', reasoning: ['step one'], why_these_actions: [],
+        verify_next: ['check link'], caveats: [] },
+    })
+    expect(await screen.findByText('The network device degraded first.')).toBeInTheDocument()
+    expect(screen.getByText(/Grounding check passed/)).toBeInTheDocument()
+    expect(screen.getByText(/robust z 94.5/)).toBeInTheDocument()
+    expect(screen.getByText(/Evidence: src_ab12cd… BASELINE_DEVIATION/)).toBeInTheDocument()
+    expect(screen.getAllByText(/network device src_ab12cd…/).length).toBeGreaterThan(0)
+    await userEvent.click(screen.getByRole('button', { name: /Show the exact prompt sent/ }))
+    expect(screen.getByText('EVIDENCE JSON: {...}')).toBeInTheDocument()
+  })
+
+  it('never shows an ungrounded LLM answer', async () => {
+    await renderDetail({
+      incident_version: 3, created_at: '', provider: 'gemini', model: 'gemini-x', status: 'rejected_ungrounded',
+      latency_ms: 3000, prompt: { user: 'x' }, grounding: { ok: false, violations: ['unknown source id src_ffffff'] },
+      response: { summary: 'HALLUCINATED TEXT', reasoning: [], why_these_actions: [], verify_next: [], caveats: [] },
+    })
+    expect(await screen.findByText(/was/)).toBeInTheDocument()
+    expect(screen.getByText('unknown source id src_ffffff')).toBeInTheDocument()
+    expect(screen.queryByText('HALLUCINATED TEXT')).not.toBeInTheDocument()
+  })
+
+  it('explains when the LLM is disabled by residency policy', async () => {
+    await renderDetail({
+      incident_version: 3, created_at: '', provider: 'gemini', model: null, status: 'disabled_by_policy', latency_ms: null,
+      prompt: { not_sent: true }, grounding: { note: 'region eu-west not enabled for external LLM (data residency)' }, response: null,
+    })
+    expect(await screen.findByText(/data residency/)).toBeInTheDocument()
+  })
+})
+
+describe('Priority badge', () => {
+  it('pairs every priority with a distinct icon and its label', async () => {
+    const { PriorityBadge } = await import('./components/Priority')
+    const icons = new Set<string>()
+    for (const p of ['P1', 'P2', 'P3'] as const) {
+      const { container } = render(<PriorityBadge p={p} />)
+      expect(container.textContent).toContain(p)
+      icons.add(container.querySelector('.state-icon')?.textContent ?? '')
+    }
+    expect(icons.size).toBe(3)
+  })
+})

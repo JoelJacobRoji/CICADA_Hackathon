@@ -95,7 +95,7 @@ def main() -> None:
                 "--scenario",
                 "s5",
                 "--scenario-at",
-                "10",
+                "70",  # after >= 30 baseline windows, so the AIOps baseline detector can fire
             ],
             cwd=ROOT,
             stdout=subprocess.DEVNULL,

@@ -6,7 +6,7 @@
   uploads it to /root/aegis-infra/web-dist and runs `install.sh web` (atomic swap).
 #>
 param(
-  [string]$DataSourceLabel = 'SIMULATED - AEGIS dev simulator (official organizer stream not yet integrated)',
+  [string]$DataSourceLabel = 'SYNTHETIC - AEGIS telemetry simulator (official data source: organizers provide no dataset)',
   [string]$SshHost = 'incendium'
 )
 $ErrorActionPreference = 'Stop'

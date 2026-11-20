@@ -2,6 +2,9 @@ import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/auth'
 import { Layout } from './components/Layout'
 import { Fleet } from './pages/Fleet'
+import { IncidentDetail } from './pages/IncidentDetail'
+import { Incidents } from './pages/Incidents'
+import { Trust } from './pages/Trust'
 import { Login } from './pages/Login'
 import { Infrastructure, Network } from './pages/MetricsPage'
 import { Overview } from './pages/Overview'
@@ -21,6 +24,9 @@ function Gate() {
         <Route path="infrastructure" element={<Infrastructure />} />
         <Route path="network" element={<Network />} />
         <Route path="security" element={<Security />} />
+        <Route path="incidents" element={<Incidents />} />
+        <Route path="incidents/:id" element={<IncidentDetail />} />
+        <Route path="trust" element={<Trust />} />
         <Route path="sources/:pid" element={<SourceDetail />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<p className="empty">Page not found. <Link to="/">Back to overview</Link></p>} />

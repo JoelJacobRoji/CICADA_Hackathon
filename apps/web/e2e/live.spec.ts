@@ -82,6 +82,38 @@ test('@offline fleet turns the collector Poor (offline) without reload', async (
   await page.screenshot({ path: `${SHOTS}/fleet-offline.png`, fullPage: true })
 })
 
+test('@live AI engine: a new baseline-deviation incident appears WITHOUT reload', async ({ page }) => {
+  // S5 starts at t+70 s (after >= 30 windows of baseline): CPU steps to ~80%, below the static
+  // 85% threshold, so only the statistical baseline detector can catch it.
+  test.setTimeout(240_000)
+  await signIn(page)
+  await page.getByRole('link', { name: 'Incident center' }).click()
+  await page.getByRole('button', { name: 'Open' }).click()
+  const row = page.getByRole('row', { name: /Baseline deviation on server .*cpu_usage/ }).first()
+  await expect(row).toBeVisible({ timeout: 200_000 })
+  await page.screenshot({ path: `${SHOTS}/incident-center.png`, fullPage: true })
+  await row.getByRole('link').click()
+  await expect(page.getByRole('heading', { name: 'Probable cause' })).toBeVisible()
+  await expect(page.getByText(/robust z/).first()).toBeVisible()
+  await expect(page.getByText('Recommended actions')).toBeVisible()
+  // Grounded LLM explanation arrives asynchronously (pushed over the WebSocket).
+  await expect(page.getByText(/Grounding check passed/)).toBeVisible({ timeout: 60_000 })
+  await page.getByRole('button', { name: /Show the exact prompt sent/ }).click()
+  await expect(page.locator('pre.prompt')).toContainText('EVIDENCE JSON')
+  await expect(page.locator('pre.prompt')).not.toContainText('SRV_002') // pseudonymous only
+  await page.getByRole('button', { name: /Hide the exact prompt sent/ }).click()
+  await page.screenshot({ path: `${SHOTS}/incident-detail-ai.png`, fullPage: true })
+})
+
+test('@live security & privacy page passes its live checks', async ({ page }) => {
+  await signIn(page)
+  await page.getByRole('link', { name: 'Security & privacy' }).click()
+  await expect(page.getByRole('heading', { name: 'Security & privacy' })).toBeVisible()
+  await expect(page.getByText('Fail', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Pass', { exact: true })).toHaveCount(5)
+  await page.screenshot({ path: `${SHOTS}/security-privacy.png`, fullPage: true })
+})
+
 test('@live sign out clears access', async ({ page }) => {
   await signIn(page)
   await page.getByRole('button', { name: 'Sign out' }).click()
