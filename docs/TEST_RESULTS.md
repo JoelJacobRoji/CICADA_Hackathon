@@ -35,3 +35,4 @@
 | 3 | Live run leak check: 0 occurrences of any S1 fake secret in egress tables and in the collector log (668 lines) | PASSED | report + grep |
 | 3 | Real system agent on this laptop (psutil + TCP connect probes): 7 metrics accepted, summaries queued, hostname absent from egress | PASSED (manual) | ad-hoc run |
 | 3 | Full 10-minute sustained run | NOT RUN (Phase 9) | n/a |
+| 3+ | CI parity: full suite with all .env loading disabled (env vars only, as on GitHub Actions) | PASSED 99/99 after fixture fix; old fixture reproduced the CI failure (2 integration errors) | scratchpad pytest plugin `ci_sim` |

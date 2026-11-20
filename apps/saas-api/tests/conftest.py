@@ -48,8 +48,13 @@ def temp_region_db(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, str]]:
     admin = os.environ.get("AEGIS_TEST_DB_ADMIN_URL")
     if not admin:
         pytest.skip("AEGIS_TEST_DB_ADMIN_URL not set (local Postgres integration tests)")
+    # Settings require the DB URLs and signing key. Provide placeholders FIRST so this works with
+    # no apps/saas-api/.env (CI); the real temp-DB URLs are set below once the DB exists.
+    for region in ("AP_SOUTH", "EU_WEST"):
+        monkeypatch.setenv(f"AEGIS_SAAS_DB_APP_URL_{region}", UNREACHABLE)
+    monkeypatch.setenv("AEGIS_SAAS_JWT_SIGNING_KEY", "x" * 48)
     get_settings.cache_clear()
-    app_pw = get_settings().db_app_password  # from env or apps/saas-api/.env
+    app_pw = get_settings().db_app_password  # env (CI) or apps/saas-api/.env (local)
     if app_pw is None:
         pytest.skip("AEGIS_SAAS_DB_APP_PASSWORD not configured")
 
