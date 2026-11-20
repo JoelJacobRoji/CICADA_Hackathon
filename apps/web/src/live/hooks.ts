@@ -6,6 +6,16 @@ import { live } from './live'
 
 const WINDOW_MS = 15 * 60 * 1000
 
+/** Canonical ISO-8601 UTC ('...Z') so string sort/compare is chronological across sources. */
+export function isoUtc(t: string): string {
+  const d = new Date(t)
+  return Number.isNaN(d.getTime()) ? t : d.toISOString()
+}
+
+function norm(p: MetricPoint): MetricPoint {
+  return { ...p, window_start: isoUtc(p.window_start), window_end: isoUtc(p.window_end) }
+}
+
 /** All sources' windows for one metric over the last 15 min, kept live from the WebSocket. */
 export function useMetricSeries(metric: string, sourcePid?: string) {
   const [byPid, setByPid] = useState<Map<string, MetricPoint[]>>(new Map())
@@ -21,7 +31,7 @@ export function useMetricSeries(metric: string, sourcePid?: string) {
       .then((rows) => {
         if (cancelled) return
         const m = new Map<string, MetricPoint[]>()
-        for (const r of rows) m.set(r.source_pid, [...(m.get(r.source_pid) ?? []), r])
+        for (const r of rows.map(norm)) m.set(r.source_pid, [...(m.get(r.source_pid) ?? []), r])
         setByPid(m)
         setError(null)
       })
@@ -31,7 +41,7 @@ export function useMetricSeries(metric: string, sourcePid?: string) {
     const unsub = live.subscribe((e: LiveEvent) => {
       if (e.type !== 'metric_summary' || e.metric !== metric) return
       if (sourcePid && e.source_pid !== sourcePid) return
-      const p = e as MetricPoint
+      const p = norm(e as MetricPoint)
       setByPid((prev) => {
         const next = new Map(prev)
         const cutoff = new Date(Date.now() - WINDOW_MS).toISOString()

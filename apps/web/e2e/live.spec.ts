@@ -1,20 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 
-const EMAIL = process.env.AEGIS_E2E_EMAIL ?? ''
-const PASSWORD = process.env.AEGIS_E2E_PASSWORD ?? ''
 const SHOTS = process.env.AEGIS_E2E_SHOTS ?? '../../docs/judging/evidence/screenshots'
 
+// The session comes from the `setup` project (auth.setup.ts), signed in once per run.
 async function signIn(page: Page) {
   await page.goto('/')
-  await page.getByLabel('Email').fill(EMAIL)
-  await page.getByLabel('Password').fill(PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page.getByRole('heading', { name: 'Operational overview' })).toBeVisible()
 }
-
-test.beforeAll(() => {
-  if (!EMAIL || !PASSWORD) throw new Error('AEGIS_E2E_EMAIL / AEGIS_E2E_PASSWORD not set')
-})
 
 test('@live security headers are served on the dashboard', async ({ request }) => {
   const r = await request.get('/')
@@ -41,10 +33,15 @@ test('@live infrastructure charts update WITHOUT reload (WebSocket)', async ({ p
   await page.getByRole('link', { name: 'Infrastructure' }).click()
   const latest = page.locator('.multiple .latest').first()
   await expect(latest).toBeVisible()
-  const before = await page.locator('.multiple svg path').first().getAttribute('d')
-  // New 2 s windows arrive over the WebSocket; the chart path must change in place.
-  await expect.poll(async () => page.locator('.multiple svg path').first().getAttribute('d'),
-    { timeout: 30_000 }).not.toBe(before)
+  // The chart's accessible label encodes "<n> windows, latest <v>" from the data it renders.
+  // (Not an SVG path: ECharts' first <path> is a static axis line, which made v1 of this test wrong.)
+  const chart = page.locator('.multiple [role="img"]').first()
+  const before = await chart.getAttribute('aria-label')
+  const reloads: string[] = []
+  page.on('framenavigated', (f) => f === page.mainFrame() && reloads.push(f.url()))
+  // New 2 s windows arrive over the WebSocket; the rendered data must change in place.
+  await expect.poll(async () => chart.getAttribute('aria-label'), { timeout: 30_000 }).not.toBe(before)
+  expect(reloads, 'page must not reload').toEqual([])
   await page.screenshot({ path: `${SHOTS}/infrastructure.png`, fullPage: true })
 })
 

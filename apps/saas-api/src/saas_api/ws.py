@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -18,6 +19,17 @@ from .auth.operator import decode_token
 from .config import get_settings
 
 log = structlog.get_logger("saas.ws")
+
+
+def _json_default(o: Any) -> Any:
+    """Same wire format as the REST API: ISO-8601 UTC with 'Z' (str(datetime) gave
+    '2026-11-20 16:26:26+00:00', which broke client-side time sorting/parsing)."""
+    if isinstance(o, datetime):
+        o = o.astimezone(UTC) if o.tzinfo else o.replace(tzinfo=UTC)
+        return o.isoformat().replace("+00:00", "Z")
+    if isinstance(o, uuid.UUID):
+        return str(o)
+    return str(o)
 
 
 class Hub:
@@ -36,7 +48,7 @@ class Hub:
         return len(self._subs.get(tenant_id, ()))
 
     async def publish(self, tenant_id: uuid.UUID, message: dict[str, Any]) -> None:
-        data = json.dumps(message, default=str)
+        data = json.dumps(message, default=_json_default)
         for ws in list(self._subs.get(tenant_id, ())):
             try:
                 await ws.send_text(data)

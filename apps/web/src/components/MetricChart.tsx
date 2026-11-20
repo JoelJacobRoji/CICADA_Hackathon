@@ -11,6 +11,8 @@ import { fmtValue, metricLabel } from '../lib/format'
 
 echarts.use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
 
+const GAP_MS = 6_000 // > 3 windows of 2 s without data = a real gap
+
 export interface ThresholdLine {
   label: string
   value: number
@@ -38,13 +40,20 @@ export function MetricChart({
   const el = useRef<HTMLDivElement>(null)
   const chart = useRef<echarts.ECharts | null>(null)
 
-  const data = useMemo(
-    () =>
-      [...points]
-        .sort((a, b) => a.window_end.localeCompare(b.window_end))
-        .map((p) => [p.window_end, unit === 'bool' ? p.min : p.mean] as [string, number]),
-    [points, unit],
-  )
+  // Honest gaps: if consecutive windows are more than GAP_MS apart there was NO data in between,
+  // so the line is broken (a null point) instead of drawing a slope that never happened.
+  const data = useMemo(() => {
+    const sorted = [...points]
+      .map((p) => [Date.parse(p.window_end), unit === 'bool' ? p.min : p.mean] as const)
+      .filter(([t]) => !Number.isNaN(t))
+      .sort((a, b) => a[0] - b[0])
+    const out: [number, number | null][] = []
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i]![0] - sorted[i - 1]![0] > GAP_MS) out.push([sorted[i - 1]![0] + 1, null])
+      out.push([sorted[i]![0], sorted[i]![1]])
+    }
+    return out
+  }, [points, unit])
 
   useEffect(() => {
     if (!el.current) return
@@ -79,6 +88,7 @@ export function MetricChart({
           type: 'value',
           min: unit === 'percent' ? 0 : unit === 'bool' ? 0 : undefined,
           max: unit === 'percent' ? 100 : unit === 'bool' ? 1 : undefined,
+          interval: unit === 'percent' ? 25 : unit === 'bool' ? 1 : undefined,
           splitNumber: 3,
           axisLabel: {
             color: ink,
@@ -100,6 +110,7 @@ export function MetricChart({
             type: 'line',
             name: title ?? metricLabel(metric),
             data,
+            connectNulls: false,
             showSymbol: false,
             symbolSize: 8,
             step: unit === 'bool' ? 'end' : undefined,
@@ -110,7 +121,11 @@ export function MetricChart({
               silent: true,
               symbol: 'none',
               lineStyle: { color: ink, type: 'dashed', width: 1 },
-              label: { color: ink, fontSize: 10, formatter: '{b}', position: 'end' },
+              // Inside the plot, just above each line, on a surface backing so data never hides it.
+              label: {
+                color: ink, fontSize: 10, formatter: '{b}', position: 'insideEndTop',
+                backgroundColor: token('--surface'), padding: [0, 3], distance: 1,
+              },
               data: thresholds.map((t) => ({ name: t.label, yAxis: t.value })),
             },
           },

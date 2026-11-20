@@ -80,8 +80,8 @@ class Transition:
             "entity_id": self.entity_id,
             "from_state": self.from_state,
             "to_state": self.to_state,
-            "at_utc": self.at_utc.isoformat(),
-            "event_time": self.event_time.isoformat() if self.event_time else None,
+            "at_utc": self.at_utc,
+            "event_time": self.event_time,
             "reasons": self.reasons,
         }
 

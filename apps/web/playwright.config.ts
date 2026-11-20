@@ -15,5 +15,17 @@ export default defineConfig({
     trace: 'off',
     screenshot: 'off',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  projects: [
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'chromium',
+      testMatch: /.*\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: 'test-results/.auth-state.json',
+      },
+    },
+  ],
 })
