@@ -113,7 +113,16 @@ def test_s5_baseline_deviation_below_static_threshold(h):
     (inc,) = h.incidents()
     alerts = h.eng._alerts_of(inc)  # noqa: SLF001
     assert {a.family for a in alerts} == {"BASELINE"}
-    assert {a.entity_id for a in alerts} == {h.pid("SRV_002")}
+    assert {a.entity_id for a in alerts} == {h.pid("SRV_002")}, [
+        (
+            a.entity_id[:10],
+            a.code,
+            a.evidence.get("direction"),
+            a.evidence.get("baseline_median"),
+            a.evidence.get("observed"),
+        )
+        for a in alerts
+    ]
     assert inc.root_entity == h.pid("SRV_002")
     ev = alerts[0].evidence
     assert ev["observed"] < 85 and ev["z"] >= 3.5  # below the static Fair threshold
@@ -150,3 +159,34 @@ def test_s3_failed_logins_security_incident(h):
     assert len(incs) == 1
     blob = json.dumps(incs[0].explanation)
     assert "failure_count" in blob and "@" not in blob
+
+
+def test_back_to_back_s6_then_recovery_then_s5_no_false_incident(h):
+    """Production regression: after an incident, recovery must not open a 'down deviation'
+    incident, and a later independent incident must still be detected against a clean baseline."""
+    from datetime import timedelta as td
+
+    _scenario(h, s6_cascade(duration=120.0), after=120)  # S6 for 120 s, then normal data
+    for i in h.incidents():
+        assert all(a.evidence.get("direction") != "down" for a in h.eng._alerts_of(i))  # noqa: SLF001
+    h.run(Generator(seed=13), h.now, 150)  # 150 s of normal data (recovery)
+    h.eng.sweep()
+    assert [i for i in h.incidents() if i.status == "open"] == []
+    gen = Generator(seed=12)
+    start = h.now
+    gen.add_scenario(s5_cpu_step(), start + td(seconds=30))
+    h.run(gen, start, 70)
+    new = [i for i in h.incidents() if i.status == "open"]
+    assert len(new) == 1, [i.title for i in new]
+    alerts = h.eng._alerts_of(new[0])  # noqa: SLF001
+    assert {a.entity_id for a in alerts} == {h.pid("SRV_002")}, [
+        (
+            a.entity_id[:10],
+            a.code,
+            a.evidence.get("direction"),
+            a.evidence.get("baseline_median"),
+            a.evidence.get("observed"),
+        )
+        for a in alerts
+    ]
+    assert alerts[0].evidence["direction"] == "up" and alerts[0].evidence["baseline_median"] < 45

@@ -16,6 +16,8 @@ class AiopsConfig:
     min_history: int
     z_threshold: float
     persist_windows: int
+    adapt_after_windows: int
+    alert_direction: dict[str, str]
     mad_floor: dict[str, float]
     trend_windows: int
     trend_metrics: frozenset[str]
@@ -41,6 +43,10 @@ def parse(d: dict[str, Any]) -> AiopsConfig:
         min_history=int(b["min_history"]),
         z_threshold=float(b["z_threshold"]),
         persist_windows=int(b["persist_windows"]),
+        adapt_after_windows=int(b.get("adapt_after_windows", b["history_windows"])),
+        alert_direction={
+            k: str(v) for k, v in (b.get("alert_direction") or {"default": "both"}).items()
+        },
         mad_floor={k: float(v) for k, v in b["mad_floor"].items()},
         trend_windows=int(t["windows"]),
         trend_metrics=frozenset(t["metrics"]),

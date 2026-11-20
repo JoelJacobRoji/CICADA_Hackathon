@@ -204,6 +204,7 @@ export interface Explanation {
   uncertainty: string[]
   recommendations: Recommendation[]
   affected_entities: string[]
+  closed_reason?: string
 }
 
 export interface AiExplanation {

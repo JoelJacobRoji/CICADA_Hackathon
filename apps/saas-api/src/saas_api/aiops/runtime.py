@@ -40,6 +40,11 @@ from .engine import AiopsEngine, Change, Incident
 
 log = structlog.get_logger("saas.aiops")
 
+RESTART_REASON = (
+    "Closed automatically when the SaaS restarted: open-incident state is not carried across "
+    "restarts yet (K30). New signals open a new incident."
+)
+
 
 @lru_cache(maxsize=1)
 def engine() -> AiopsEngine:
@@ -410,6 +415,22 @@ def load_state() -> None:
                 tenants = [r.tenant_id for r in c.execute(text("SELECT * FROM list_tenants()"))]
             for tid in tenants:
                 with tenant_connection(region, tid) as c:
+                    # Open-incident state is in memory (K30): close what a previous process left
+                    # open, with the reason, instead of showing it as open forever.
+                    c.execute(
+                        text(
+                            "UPDATE incidents SET status = 'resolved', resolved_at = now(), "
+                            "explanation = explanation || jsonb_build_object('closed_reason', "
+                            "CAST(:r AS text)) WHERE status = 'open'"
+                        ),
+                        {"r": RESTART_REASON},
+                    )
+                    c.execute(
+                        text(
+                            "UPDATE alerts SET status = 'resolved', resolved_at = now() "
+                            "WHERE status = 'open'"
+                        )
+                    )
                     eng.observe_edges(
                         tid, [dict(r._mapping) for r in c.execute(select(topology_edges))]
                     )

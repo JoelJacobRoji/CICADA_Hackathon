@@ -29,9 +29,10 @@ test('@live sign in -> overview shows real health from the API, live connection'
   await signIn(page)
   await expect(page.getByRole('status').filter({ hasText: 'Live' })).toBeVisible()
   await expect(page.getByText('Collectors online')).toBeVisible()
-  await expect(page.getByText(/Data source:.*SIMULATED/)).toBeVisible()
+  await expect(page.getByText(/Data source:.*SYNTHETIC/)).toBeVisible()
   // The tenant badge is populated from the session, not hard-coded.
   await expect(page.getByText('tenant · acme')).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: /^Loading/ })).toHaveCount(0) // all cards loaded
   await page.screenshot({ path: `${SHOTS}/overview.png`, fullPage: true })
 })
 
@@ -87,7 +88,7 @@ test('@live AI engine: a new baseline-deviation incident appears WITHOUT reload'
   // 85% threshold, so only the statistical baseline detector can catch it.
   test.setTimeout(240_000)
   await signIn(page)
-  await page.getByRole('link', { name: 'Incident center' }).click()
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Incident center' }).click()
   await page.getByRole('button', { name: 'Open' }).click()
   const row = page.getByRole('row', { name: /Baseline deviation on server .*cpu_usage/ }).first()
   await expect(row).toBeVisible({ timeout: 200_000 })
@@ -109,8 +110,8 @@ test('@live security & privacy page passes its live checks', async ({ page }) =>
   await signIn(page)
   await page.getByRole('link', { name: 'Security & privacy' }).click()
   await expect(page.getByRole('heading', { name: 'Security & privacy' })).toBeVisible()
-  await expect(page.getByText('Fail', { exact: true })).toHaveCount(0)
-  await expect(page.getByText('Pass', { exact: true })).toHaveCount(5)
+  await expect(page.locator('.trust-list .state-excellent')).toHaveCount(5) // icon + 'Pass'
+  await expect(page.locator('.trust-list .state-poor')).toHaveCount(0)
   await page.screenshot({ path: `${SHOTS}/security-privacy.png`, fullPage: true })
 })
 

@@ -272,3 +272,49 @@ def test_tenants_never_correlate_or_leak(eng, clk):
     theirs = [i for i in eng.incidents.values() if i.tenant_id == other]
     assert len(mine) == 1 and len(theirs) == 1 and mine[0].id != theirs[0].id
     assert eng.noise(other)["transients_suppressed"] == eng.transients.get(other, 0)
+
+
+# ---- Regression (production, 2026-11-20 19:50): the baseline absorbed an incident's values, so
+# the return to normal raised "down" deviations (false P1) and a repeat incident looked normal.
+
+
+def test_return_to_normal_after_incident_is_not_an_incident(eng, clk):
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 40) + [80.0] * 60)  # 2 min incident
+    (first,) = incidents(eng)
+    clk.now += timedelta(seconds=200)
+    eng.sweep()
+    assert first.status == "resolved"
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 60, seed=9), start=100)  # back to normal
+    assert [i for i in incidents(eng) if i.status == "open"] == []
+
+
+def test_repeat_incident_is_detected_again(eng, clk):
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 40) + [80.0] * 60)
+    clk.now += timedelta(seconds=200)
+    eng.sweep()
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 30, seed=4) + [80.0] * 3, start=100)
+    opened = [i for i in incidents(eng) if i.status == "open"]
+    assert len(opened) == 1
+    ev = eng._alerts_of(opened[0])[0].evidence
+    assert ev["direction"] == "up" and ev["baseline_median"] < 40  # baseline was not polluted
+
+
+def test_drop_in_bad_when_high_metric_never_alerts(eng, clk):
+    feed(eng, clk, NET, "packet_loss", noisy(1.0, 0.1, 40) + [0.0] * 10, kind="network_device")
+    assert incidents(eng) == []
+
+
+def test_persistent_new_level_is_adopted_after_adaptation_window(eng, clk):
+    cfg = eng.cfg
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 40) + [60.0] * (cfg.adapt_after_windows + 160))
+    s = eng.baselines.series[(TENANT, SRV, "cpu_usage")]
+    import statistics
+
+    assert statistics.median(s.hist) == 60.0  # the new normal, learned only after ~5 min
+
+
+def test_warm_start_seed_excludes_incident_values(eng):
+    key = (TENANT, SRV, "cpu_usage")
+    eng.baselines.seed(key, noisy(35, 2, 100) + [80.0] * 40, T0)
+    s = eng.baselines.series[key]
+    assert max(s.hist) < 50 and len(s.hist) == 100

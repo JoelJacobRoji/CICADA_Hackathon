@@ -160,6 +160,8 @@ export function IncidentDetail() {
         </div>
       </div>
 
+      {x.closed_reason && <div className="data-banner" role="note">{x.closed_reason}</div>}
+
       <div className="grid-3">
         <Card title="Probable cause">
           <p className="big">{entityLink(pc.entity, pc.entity_kind)}</p>

@@ -6,6 +6,11 @@ baseline:
   min_history: 30           # no anomaly verdict before this many windows ("baseline learning")
   z_threshold: 3.5          # robust z = 0.6745 (x - median) / MAD  (Iglewicz-Hoaglin)
   persist_windows: 2        # anomaly must hold this many consecutive windows (else TRANSIENT)
+  adapt_after_windows: 150  # anomalous windows are kept OUT of the baseline (frozen) until a new
+                            # level has persisted this long (~5 min), then it becomes the new normal
+  alert_direction:          # which deviation is harmful (others are tracked, never alerted)
+    default: up             # cpu/memory/disk/latency/loss/errors: only increases are bad
+    bandwidth_mbps: both
   mad_floor:                # minimum MAD per metric so a flat signal can't give an infinite z
     cpu_usage: 1.0
     memory_usage: 0.5

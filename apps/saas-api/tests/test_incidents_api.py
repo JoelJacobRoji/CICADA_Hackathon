@@ -122,3 +122,19 @@ def test_collector_token_cannot_read_incidents_and_operator_cannot_pull(regions,
     assert api.get("/api/v1/incidents", headers=_auth(acme)).status_code == 401
     login(api, acme)
     assert api.get("/api/v1/notifications/ap-south").status_code == 401
+
+
+def test_restart_closes_stale_open_incidents_with_reason(regions, seeded):
+    from saas_api.aiops import runtime as aiops
+
+    acme = seeded["acme"]
+    api = TestClient(create_app())
+    _security_incident(api, acme)
+    login(api, acme)
+    iid = api.get("/api/v1/incidents").json()[0]["id"]
+    aiops.reset()  # simulate a process restart: in-memory incident state is gone
+    aiops.load_state()
+    d = api.get(f"/api/v1/incidents/{iid}").json()
+    assert d["status"] == "resolved" and d["resolved_at"]
+    assert "restarted" in d["explanation"]["closed_reason"]
+    assert all(a["status"] == "resolved" for a in d["alerts"])

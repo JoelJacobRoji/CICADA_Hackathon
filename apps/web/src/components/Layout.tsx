@@ -11,8 +11,7 @@ const NAV: { to: string; label: string; phase?: string }[] = [
   { to: '/security', label: 'Security signals' },
   { to: '/incidents', label: 'Incident center' },
   { to: '/trust', label: 'Security & privacy' },
-  { to: '/privacy', label: 'Privacy glass', phase: 'Phase 8' },
-  { to: '/regions', label: 'Regional operations', phase: 'later' },
+  // Privacy glass / regional operations: deferred (Phase 8+); not shown until built.
   { to: '/settings', label: 'Thresholds' },
 ]
 
