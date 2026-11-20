@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     jwt_signing_key: SecretStr
     cors_origins: list[str] = ["http://localhost:5180", "http://127.0.0.1:5180"]
 
+    # Operator sessions
+    session_ttl_minutes: int = Field(default=30, ge=5, le=24 * 60)
+    session_cookie_name: str = "aegis_session"
+    cookie_secure: bool = False  # MUST be true behind HTTPS (prod); false only for local http
+    login_max_attempts_per_minute: int = Field(default=5, ge=1, le=100)
+
+    # Ingest
+    ingest_max_bytes: int = Field(default=1_048_576, ge=1024, le=8_388_608)
+    late_after_seconds: float = Field(default=30.0, ge=1)
+    offline_after_seconds: float = Field(default=30.0, ge=5)
+
     @field_validator("jwt_signing_key")
     @classmethod
     def _key_strength(cls, v: SecretStr) -> SecretStr:

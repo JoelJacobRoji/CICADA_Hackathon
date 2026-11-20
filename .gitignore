@@ -21,3 +21,4 @@ apps/collector/data/
 .vscode/
 .idea/
 *.tsbuildinfo
+*.local

@@ -29,11 +29,16 @@ select = ["E", "F", "I", "B", "UP", "S", "N", "SIM"]
 ignore = ["S101"]  # assert is fine in tests
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S105", "S106", "S108", "E501"]
-"apps/saas-api/alembic/**" = ["S608"]
+"**/tests/**" = ["S105", "S106", "S108", "E501", "S608"]
+"apps/saas-api/alembic/**" = ["S608", "E501"]  # SQL DDL kept on one line for readability
+"scripts/verify_e2e.py" = ["S608", "E501"]  # fixed table-name constants; read-only evidence script
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib -q"
 testpaths = ["packages/contracts/tests", "apps/saas-api/tests", "apps/collector/tests", "simulator/tests", "tests/architecture"]
-pythonpath = ["."]
+pythonpath = [".", "apps/saas-api/tests"]
 markers = ["integration: requires the local Postgres container (AEGIS_TEST_DB_ADMIN_URL)"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom (evaluated per request, not at import).
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Path"]

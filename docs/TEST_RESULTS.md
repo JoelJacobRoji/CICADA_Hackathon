@@ -36,3 +36,18 @@
 | 3 | Real system agent on this laptop (psutil + TCP connect probes): 7 metrics accepted, summaries queued, hostname absent from egress | PASSED (manual) | ad-hoc run |
 | 3 | Full 10-minute sustained run | NOT RUN (Phase 9) | n/a |
 | 3+ | CI parity: full suite with all .env loading disabled (env vars only, as on GitHub Actions) | PASSED 99/99 after fixture fix; old fixture reproduced the CI failure (2 integration errors) | scratchpad pytest plugin `ci_sim` |
+| 4 | pytest total 124 (Phase 4 adds 25: ingest 13, tenancy/auth/WS 8, e2e 4) | PASSED 124/124 normal AND 124/124 CI parity (no .env) | `scripts/check.ps1` |
+| 4 | Ingest: valid batch accepted; tenant bound from TOKEN; SaaS sha256 == collector canonical sha256; replay -> all duplicate, row count unchanged, receipts (5,0),(0,5) | PASSED | `test_ingest.py` |
+| 4 | Ingest rejects: no/bad/Basic/revoked token 401; unknown region 404; COLLECTOR_MISMATCH; extra field / raw-log-shaped / unknown kind -> SCHEMA_INVALID (and smuggled secret not stored); bad JSON 422; >1 MiB 413; 501 items 422 | PASSED | `test_ingest.py` |
+| 4 | Late arrival stored in event-time position with late=true | PASSED | `test_late_flag_and_event_time_order` |
+| 4 | No SaaS route accepts raw inbound records (route inventory) | PASSED | `test_no_route_accepts_raw_inbound_records` |
+| 4 | Cross-tenant: API (metrics, collectors, security events, receipts -> 404), DB level (RLS read 0 rows; WITH CHECK blocks foreign-tenant insert), token hashes never returned | PASSED | `test_tenancy.py` |
+| 4 | WebSocket: each tenant receives only its own events; unauthenticated and foreign-Origin connections refused | PASSED | `test_tenancy.py` |
+| 4 | Operator auth: login/logout/me; httpOnly + SameSite=Strict cookie; identical response for wrong password vs unknown user; forged-signature and alg=none JWTs rejected; rate limit 3 -> 429 | PASSED | `test_tenancy.py` |
+| 4 | Residency (local): EU collector 401 at ap-south; data and tenant exist only in eu-west DB | PASSED | `test_residency_...` |
+| 4 | E2E in-process: simulator -> pipeline -> ledger -> sender -> SaaS: all stored once, 0 hash mismatches, 0 leaks (per table), full-outbox replay -> 0 new rows; auth failure keeps everything pending; network failure backs off then recovers; heartbeat appears in fleet view | PASSED | `test_e2e_flow.py` |
+| 4 | Sender bug found by test: backoff was computed from send START time; on Windows a refused connect takes ~2 s so retries were immediately due. Fixed: backoff from failure time | FIXED + PASSED | `test_network_failure_backs_off_and_recovers` |
+| 4 | Supabase (both regions): migrations 0002 + 0003 applied; 9 RLS policies; identity functions SECURITY DEFINER; anon/authenticated: no table SELECT, no function EXECUTE; aegis_app: no DELETE anywhere | PASSED | verification queries, 2026-11-20 |
+| 4 | **Live E2E on Supabase (SIMULATED data)**: 40 s @100 ev/s + S1 + S3 -> 621 ledgered, 621 stored in Supabase ap-south, 0 missing, 0 sha256 mismatches, 0 leaks in any SaaS table; delivery latency ledger->Supabase p50 0.61 s / p95 1.13 s / max 2.56 s (n=621); acme operator sees 609 metrics + 2 S3 findings; initech operator sees 0 | MEASURED | `docs/judging/evidence/phase4_e2e_supabase.json` |
+| 4 | **Live residency on Supabase**: globex collector token -> Mumbai 401, Frankfurt 204; globex tenant + heartbeat only in eu-west | PASSED | live curl + queries |
+| 4 | Live service logs (SaaS 76 lines, collector 387): 0 collector tokens, operator passwords or S1 secrets | PASSED | grep |

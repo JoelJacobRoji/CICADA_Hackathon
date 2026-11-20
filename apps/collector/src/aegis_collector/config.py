@@ -46,6 +46,9 @@ class CollectorSettings(BaseSettings):
     probe_targets: list[str] = ["1.1.1.1:443", "8.8.8.8:443"]
 
     saas_base_url: str = "http://127.0.0.1:9001"
+    send_interval_seconds: float = Field(default=0.5, ge=0.1, le=30)
+    send_batch_size: int = Field(default=500, ge=1, le=500)
+    heartbeat_interval_seconds: float = Field(default=10.0, ge=1, le=60)
     collector_token: SecretStr | None = None  # issued by SaaS at registration (Phase 4)
     ingest_token: SecretStr  # required by local telemetry sources to POST /api/v1/telemetry
     local_admin_token: SecretStr  # required by the local console API

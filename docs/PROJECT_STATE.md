@@ -1,9 +1,9 @@
 # AEGIS — Project State
 
-- **Current phase:** 3 (Collector & Privacy): complete, awaiting user review
-- **Last approved phase:** 3 (approved 2026-11-20)
-- **Next gate:** Pre-phase checkpoint for Phase 4 (requires `APPROVE PHASE 4`)
-- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phase 2 + 3 work is UNCOMMITTED. **Do not commit/push until the user says so.**
+- **Current phase:** 4 (SaaS ingest & tenancy): complete, awaiting user review
+- **Last approved phase:** 4 (approved 2026-11-20)
+- **Next gate:** Phase 4b (VPS deployment) checkpoint and/or Phase 5 pre-phase checkpoint
+- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phases 1-3 + CI fix pushed (HEAD 82584c9, CI green 2026-11-20). Phase 4 UNCOMMITTED. **Do not commit/push until the user says so.**
 - **Database:** Supabase (ADR-18, Free plan) at runtime: `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), migration 0001 applied and verified 2026-11-20. Local docker `aegis-pg` (127.0.0.1:55432) used by automated tests only.
 - **Hackathon clock:** started ≈ 1 h before Phase 1 began on 2026-11-20
 - **Product code:** contracts; SaaS skeleton (+RLS); collector pipeline complete up to the outbox (adapters, scrubber, pseudonyms, 2 s windows, local health, auth detector, canary + fingerprints, hash-chained ledger, local console API, retention); dev simulator with S1/S3/S4/S5/S6. No sender, no ingest, no UI yet.
@@ -21,3 +21,12 @@
 
 ## Docs index
 See `docs/requirements/`, `docs/architecture/`, `docs/security/`, `docs/judging/`, `docs/DECISIONS.md`.
+
+## Demo tenants (Supabase, seeded 2026-11-20)
+| Tenant | Region | Collector | Operator(s) |
+|---|---|---|---|
+| acme | ap-south (Mumbai) | col_acme_01 (token in apps/collector/.env) | ops@acme.example, admin@acme.example |
+| initech | ap-south (Mumbai) | col_initech_01 (token in apps/collector/.env.initech) | ops@initech.example |
+| globex | eu-west (Frankfurt) | col_globex_01 (token in apps/collector/.env.globex) | ops@globex.example |
+
+Operator passwords: `apps/saas-api/.demo-operators.local` (git-ignored; latest line per email wins). Reset with `uv run python -m saas_api.admin reset-password --email <e> --generate`.

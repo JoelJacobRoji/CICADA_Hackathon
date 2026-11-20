@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import __version__
+from . import __version__, ingest, read_api, ws
 from .config import REGIONS, get_settings
 from .db import ping
 from .logs import configure_logging, get_logger
@@ -51,6 +51,10 @@ def create_app() -> FastAPI:
     def server_time() -> dict[str, str]:
         # Used for clock-offset estimation in latency measurements (MEASUREMENT_PLAN.md).
         return {"utc": datetime.now(UTC).isoformat()}
+
+    app.include_router(ingest.build_router())
+    app.include_router(read_api.build_router())
+    app.include_router(ws.build_router())
 
     log.info("saas_api_started", env=settings.env, regions=list(REGIONS))
     return app

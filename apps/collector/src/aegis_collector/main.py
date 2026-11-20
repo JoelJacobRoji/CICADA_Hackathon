@@ -87,11 +87,67 @@ def create_app() -> FastAPI:
                         log.error("system_agent_failed", error=type(exc).__name__)
 
             tasks.append(asyncio.create_task(_agent_loop()))
+
+        app.state.sender = None
+        http_client = None
+        if settings.collector_token is not None:
+            import httpx
+
+            from .egress import heartbeat as hb
+            from .egress.sender import Sender
+
+            http_client = httpx.Client(base_url=settings.saas_base_url, timeout=10)
+            token = settings.collector_token.get_secret_value()
+            sender = Sender(
+                conn=conn,
+                lock=pipeline.lock,
+                client=http_client,
+                region=settings.region,
+                token=token,
+                batch_size=settings.send_batch_size,
+            )
+            app.state.sender = sender
+            cfg_hash = hb.config_hash(
+                settings.config_dir, f"{settings.window_seconds}|{settings.window_grace_seconds}"
+            )
+
+            def _heartbeat() -> None:
+                depth, age = hb.outbox_stats(conn, pipeline.lock)
+                adapters = {
+                    "http_ingest": hb.AdapterStatus.OK,
+                    "sender": {
+                        "ok": hb.AdapterStatus.OK,
+                        "network_error": hb.AdapterStatus.DEGRADED,
+                        "server_error": hb.AdapterStatus.DEGRADED,
+                        "auth_error": hb.AdapterStatus.AUTH_ERROR,
+                    }.get(sender.state, hb.AdapterStatus.DEGRADED),
+                    "system_agent": hb.AdapterStatus.OK
+                    if settings.system_agent_enabled
+                    else hb.AdapterStatus.DISABLED,
+                }
+                beat = hb.build(
+                    collector_id=settings.collector_id,
+                    region=settings.region,
+                    cfg_hash=cfg_hash,
+                    depth=depth,
+                    oldest_age=age,
+                    adapters=adapters,
+                )
+                try:
+                    hb.send(http_client, token, beat)
+                except Exception as exc:  # noqa: BLE001 - SaaS may be down; that's the point
+                    log.warning("heartbeat_failed", error=type(exc).__name__)
+
+            tasks.append(asyncio.create_task(_every(settings.send_interval_seconds, sender.drain)))
+            tasks.append(
+                asyncio.create_task(_every(settings.heartbeat_interval_seconds, _heartbeat))
+            )
         log.info(
             "collector_started",
             collector_id=settings.collector_id,
             region=settings.region,
             system_agent=settings.system_agent_enabled,
+            sender=settings.collector_token is not None,
         )
         try:
             yield
@@ -102,6 +158,8 @@ def create_app() -> FastAPI:
                 with contextlib.suppress(asyncio.CancelledError):
                     await t
             pipeline.flush(force=True)  # don't lose open windows on shutdown
+            if http_client is not None:
+                http_client.close()
             conn.close()
 
     app = FastAPI(

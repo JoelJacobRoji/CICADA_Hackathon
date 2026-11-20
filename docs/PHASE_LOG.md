@@ -6,3 +6,4 @@
 | 1 Blueprint | 2026-11-20 | 2026-11-20 | Docs delivered (see POST-PHASE report) |
 | 2 Foundations | 2026-11-20 | 2026-11-20 | Monorepo, contracts, SaaS/collector/web skeletons, local Postgres + migrations + RLS, CI; check.ps1 all green |
 | 3 Collector & Privacy | 2026-11-20 | 2026-11-20 | Pipeline to outbox, egress ledger, canary + fingerprints, simulator; 99 tests green; live 11k-event run, 0 leaks |
+| 4 SaaS ingest & tenancy | 2026-11-20 | 2026-11-20 | Ingest/heartbeat/auth/read/WS + RLS + admin CLI; Supabase migrated (0002, 0003) and seeded; live E2E 621/621, 0 hash mismatches, 0 leaks; 124 tests x2 green |

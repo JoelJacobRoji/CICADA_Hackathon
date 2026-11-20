@@ -40,13 +40,41 @@ def app_engine(region: str) -> Engine:
     return build_engine(get_settings().app_url(region))
 
 
+@lru_cache(maxsize=len(REGIONS))
+def owner_engine(region: str) -> Engine:
+    """Owner role - admin CLI / migrations ONLY. Never used by request handlers."""
+    if region not in REGIONS:
+        raise ValueError(f"unknown region {region!r}")
+    return build_engine(get_settings().owner_url(region))
+
+
+_SET_CTX = text("SELECT set_config('app.tenant_id', :t, true), set_config('search_path', :s, true)")
+
+
 @contextmanager
 def tenant_connection(region: str, tenant_id: uuid.UUID) -> Iterator[Connection]:
-    """Open a transaction with ``app.tenant_id`` set LOCAL to it (cleared on commit/rollback)."""
-    schema = get_settings().db_schema
+    """Transaction with ``app.tenant_id`` + search_path set LOCAL (one round trip).
+
+    Both settings are transaction-local, so a pooled connection never leaks tenant context.
+    """
     with app_engine(region).begin() as conn:
-        conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(tenant_id)})
-        conn.execute(text(f"SET LOCAL search_path TO {schema}"))
+        conn.execute(_SET_CTX, {"t": str(tenant_id), "s": get_settings().db_schema})
+        yield conn
+
+
+@contextmanager
+def identity_connection(region: str) -> Iterator[Connection]:
+    """App-role transaction WITHOUT tenant context (RLS shows nothing) - used only to call the
+    SECURITY DEFINER identity functions."""
+    with app_engine(region).begin() as conn:
+        conn.execute(_SET_CTX, {"t": "", "s": get_settings().db_schema})
+        yield conn
+
+
+@contextmanager
+def owner_connection(region: str) -> Iterator[Connection]:
+    with owner_engine(region).begin() as conn:
+        conn.execute(_SET_CTX, {"t": "", "s": get_settings().db_schema})
         yield conn
 
 

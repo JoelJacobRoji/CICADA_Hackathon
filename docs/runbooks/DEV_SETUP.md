@@ -33,3 +33,23 @@ We use **only Supabase's Postgres**. AEGIS does its own authentication and WebSo
 
 ## 4. Quality gates
 `./scripts/check.ps1` runs ruff, pytest (unit + local-Postgres integration), tsc, ESLint, Vitest (including the Mermaid docs parse), the production build, and the tracked-secrets guard.
+
+## 5. Tenants, operators and collectors (admin CLI, owner connection)
+```powershell
+uv run python -m saas_api.admin seed-demo --collector-env apps/collector/.env   # acme/initech/globex
+uv run python -m saas_api.admin create-user --tenant acme --email you@acme.example --role tenant_admin  # hidden prompt
+uv run python -m saas_api.admin register-collector --tenant acme --collector-id col_acme_02 --write-env apps/collector/.env.acme2
+uv run python -m saas_api.admin rotate-collector-token --collector-id col_acme_01 --write-env apps/collector/.env
+uv run python -m saas_api.admin revoke-collector --collector-id col_acme_02
+uv run python -m saas_api.admin reset-password --email ops@acme.example --generate
+```
+Tokens and generated passwords are written only to git-ignored files and are never printed (except `register-collector` without `--write-env`, which prints the token once).
+
+## 6. Live end-to-end check
+```powershell
+# terminal 1: SaaS        cd apps/saas-api;  uv run uvicorn saas_api.main:app --port 9001
+# terminal 2: collector   cd apps/collector; uv run uvicorn aegis_collector.main:app --port 9100
+# terminal 3:
+uv run python -m simulator --duration 40 --scenario s1 --scenario s3 --scenario-at 5
+uv run python scripts/verify_e2e.py apps/collector/data/collector.db
+```

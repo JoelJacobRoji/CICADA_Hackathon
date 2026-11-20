@@ -29,7 +29,14 @@ def build_router() -> APIRouter:
 
     @router.get("/stats")
     def stats(request: Request) -> dict[str, Any]:
-        return _db(request).snapshot()
+        snap = _db(request).snapshot()
+        sender = getattr(request.app.state, "sender", None)
+        snap["sender"] = (
+            {"state": sender.state, "last_error": sender.last_error}
+            if sender
+            else {"state": "disabled (no AEGIS_COL_COLLECTOR_TOKEN)"}
+        )
+        return snap
 
     @router.get("/raw")
     def list_raw(
