@@ -1,0 +1,51 @@
+# AEGIS AIOps configuration (docs/architecture/HEALTH_AND_AIOPS.md §2-7). Read by the SaaS.
+version: 1
+
+baseline:
+  history_windows: 150      # rolling history per source+metric (2 s windows -> ~5 min)
+  min_history: 30           # no anomaly verdict before this many windows ("baseline learning")
+  z_threshold: 3.5          # robust z = 0.6745 (x - median) / MAD  (Iglewicz-Hoaglin)
+  persist_windows: 2        # anomaly must hold this many consecutive windows (else TRANSIENT)
+  mad_floor:                # minimum MAD per metric so a flat signal can't give an infinite z
+    cpu_usage: 1.0
+    memory_usage: 0.5
+    disk_usage: 0.2
+    latency_ms: 2.0
+    packet_loss: 0.1
+    bandwidth_mbps: 5.0
+    error_rate: 0.2
+
+trend:
+  windows: 15               # least-squares slope over the last N windows
+  metrics: [latency_ms, packet_loss, error_rate]
+  min_relative_rise: 0.5    # rise over the trend span must exceed 50% of the baseline median...
+  min_absolute_rise:        # ...and at least this much (avoids trends on near-zero signals)
+    latency_ms: 20
+    packet_loss: 1.0
+    error_rate: 1.0
+  persist_windows: 2
+
+alerts:
+  resolve_after_seconds: 120   # an alert resolves after its condition has been clear this long
+  threshold_persist_windows: 2 # threshold alerts need the breach for this many windows (binary: 1)
+
+correlation:
+  source_span_seconds: 300     # C-SRC: same source
+  topology_span_seconds: 300   # C-TOPO: dependency-connected sources...
+  topology_max_hops: 2         # ...within this many hops
+  site_span_seconds: 120       # C-SITE: >= site_min_alerts network alerts from one collector
+  site_min_alerts: 3
+
+priority:                      # ranking heuristic (NOT a probability)
+  p1_min_score: 15
+  p2_min_score: 8
+
+llm:
+  enabled: true
+  provider: gemini
+  model: gemini-3.5-flash-lite      # verified 2026-11-20: JSON mode, ~2 s
+  fallback_model: gemini-3.7-flash  # tried once on 503/timeout (observed high-demand 503s)
+  timeout_seconds: 20
+  max_output_tokens: 900
+  min_seconds_between_calls: 4      # free-tier friendly global spacing
+  regions_enabled: [ap-south]       # EU residency decision: eu-west tenants never sent to the LLM

@@ -50,6 +50,9 @@ class CollectorSettings(BaseSettings):
     send_batch_size: int = Field(default=500, ge=1, le=500)
     heartbeat_interval_seconds: float = Field(default=10.0, ge=1, le=60)
     collector_token: SecretStr | None = None  # issued by SaaS at registration (Phase 4)
+    # Device alerts (Phase 6): pulled from the SaaS, re-identified locally, POSTed here.
+    notify_poll_interval_seconds: float = Field(default=5.0, ge=1, le=300)
+    notify_webhook_url: str | None = None  # loopback/private only, e.g. http://127.0.0.1:9200/
     ingest_token: SecretStr  # required by local telemetry sources to POST /api/v1/telemetry
     local_admin_token: SecretStr  # required by the local console API
     pseudonym_secret: SecretStr  # HMAC key for source pseudonyms; never leaves this machine
@@ -62,6 +65,15 @@ class CollectorSettings(BaseSettings):
         if v not in LOOPBACK_HOSTS:
             raise ValueError("collector must bind to a loopback address")
         return v
+
+    @field_validator("notify_webhook_url", mode="before")
+    @classmethod
+    def _webhook_local_only(cls, v: object) -> object:
+        if v in ("", None):
+            return None
+        from .egress.notifications import validate_webhook_url
+
+        return validate_webhook_url(str(v))
 
     @field_validator("collector_token", mode="before")
     @classmethod

@@ -29,6 +29,7 @@ from sqlalchemy import text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from starlette.concurrency import run_in_threadpool
 
+from .aiops import runtime as aiops
 from .auth.collector import CollectorCtx, require_collector
 from .config import get_settings
 from .db import autocommit_connection, tenant_connection
@@ -130,7 +131,7 @@ def _store(ctx: CollectorCtx, env: _Envelope, body_sha: str) -> tuple[IngestAck,
     duplicate = [p for p in all_ids if p not in accepted_set]
     published = [
         {"type": kind, **r}
-        for kind in ("metric_summary", "security_summary")
+        for kind in ("metric_summary", "security_summary", "topology_edge")
         for r in rows[kind]
         if r["payload_id"] in accepted_set
     ]
@@ -140,14 +141,23 @@ def _store(ctx: CollectorCtx, env: _Envelope, body_sha: str) -> tuple[IngestAck,
     return ack, published
 
 
-def _evaluate_health(ctx: CollectorCtx, published: list[dict]) -> list:
+def _evaluate(ctx: CollectorCtx, published: list[dict]) -> tuple[list, list[dict]]:
+    """Health engine + AIOps engine, in-process (no extra DB round trips on the ingest path)."""
     eng = health.engine()
     metrics = [r for r in published if r["type"] == "metric_summary"]
     security = [r for r in published if r["type"] == "security_summary"]
-    out = eng.observe_metrics(ctx.tenant_id, ctx.region, metrics) if metrics else []
+    edges = [r for r in published if r["type"] == "topology_edge"]
+    transitions = eng.observe_metrics(ctx.tenant_id, ctx.region, metrics) if metrics else []
     if security:
-        out += eng.observe_security(ctx.tenant_id, ctx.region, security)
-    return out
+        transitions += eng.observe_security(ctx.tenant_id, ctx.region, security)
+    ai = aiops.engine()
+    if edges:
+        ai.observe_edges(ctx.tenant_id, edges)
+    changes = ai.observe_metrics(ctx.tenant_id, ctx.region, metrics) if metrics else []
+    if security:
+        changes += ai.observe_security(ctx.tenant_id, ctx.region, security)
+    changes += ai.observe_health(transitions)
+    return transitions, aiops.handle(changes)
 
 
 def _jsonb(rows: list[dict]) -> str:
@@ -215,13 +225,16 @@ def build_router() -> APIRouter:
             duplicate=len(ack.duplicate),
             rejected=len(ack.rejected),
         )
-        transitions = await run_in_threadpool(_evaluate_health, ctx, published)
+        transitions, incident_events = await run_in_threadpool(_evaluate, ctx, published)
         health.writer.enqueue(transitions)
         if hub.subscribers(ctx.tenant_id):
             for r in published:
-                await hub.publish(ctx.tenant_id, _event(r))
+                if r["type"] != "topology_edge":
+                    await hub.publish(ctx.tenant_id, _event(r))
             for t in transitions:
                 await hub.publish(ctx.tenant_id, t.as_event())
+            for ev in incident_events:
+                await hub.publish(ctx.tenant_id, ev)
         return ack
 
     @router.post("/api/v1/heartbeat/{region}", status_code=204)

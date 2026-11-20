@@ -89,6 +89,7 @@ def create_app() -> FastAPI:
             tasks.append(asyncio.create_task(_agent_loop()))
 
         app.state.sender = None
+        app.state.notifications = None
         http_client = None
         if settings.collector_token is not None:
             import httpx
@@ -139,6 +140,22 @@ def create_app() -> FastAPI:
                     log.warning("heartbeat_failed", error=type(exc).__name__)
 
             tasks.append(asyncio.create_task(_every(settings.send_interval_seconds, sender.drain)))
+
+            from .egress.notifications import NotificationChannel
+
+            channel = NotificationChannel(
+                conn=conn,
+                lock=pipeline.lock,
+                client=http_client,
+                region=settings.region,
+                token=token,
+                collector_id=settings.collector_id,
+                webhook_url=settings.notify_webhook_url,
+            )
+            app.state.notifications = channel
+            tasks.append(
+                asyncio.create_task(_every(settings.notify_poll_interval_seconds, channel.tick))
+            )
             tasks.append(
                 asyncio.create_task(_every(settings.heartbeat_interval_seconds, _heartbeat))
             )
@@ -162,6 +179,8 @@ def create_app() -> FastAPI:
             # a SQLite call when the connection closes (use-after-close crashed on Windows).
             if app.state.sender is not None:
                 await run_in_threadpool(app.state.sender.stop)
+            if app.state.notifications is not None:
+                app.state.notifications.close()  # flags closed under the lock first
             with pipeline.lock:
                 pipeline.flush(force=True)  # don't lose open windows on shutdown
                 pipeline.closed = True

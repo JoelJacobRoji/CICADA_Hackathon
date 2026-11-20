@@ -12,17 +12,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import __version__, health_api, ingest, read_api, ws
+from . import __version__, background, health_api, incidents_api, ingest, read_api, ws
 from .config import REGIONS, get_settings
 from .db import ping
-from .health import runtime as health
 from .logs import configure_logging, get_logger
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Health sweeper (staleness, offline collectors) + write-behind persistence.
-    task = asyncio.create_task(health.run_background(ws.hub.publish))
+    task = asyncio.create_task(background.run(ws.hub.publish))
     try:
         yield
     finally:
@@ -74,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(read_api.build_router())
     app.include_router(ws.build_router())
     app.include_router(health_api.build_router())
+    app.include_router(incidents_api.build_router())
 
     log.info("saas_api_started", env=settings.env, regions=list(REGIONS))
     return app

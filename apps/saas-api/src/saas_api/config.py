@@ -51,10 +51,19 @@ class Settings(BaseSettings):
     late_after_seconds: float = Field(default=30.0, ge=1)
     offline_after_seconds: float = Field(default=30.0, ge=5)
 
+    # AIOps + optional LLM (Gemini). The key never leaves the server and is never logged.
+    aiops_path: Path = REPO_CONFIG / "aiops.yaml"
+    gemini_api_key: SecretStr | None = None
+
     # Health engine
     thresholds_path: Path = REPO_CONFIG / "health_thresholds.yaml"
     health_sweep_interval_seconds: float = Field(default=5.0, ge=0.5, le=60)
     health_persist_interval_seconds: float = Field(default=1.0, ge=0.2, le=30)
+
+    @field_validator("gemini_api_key", mode="before")
+    @classmethod
+    def _empty_key_is_none(cls, v: object) -> object:
+        return None if v in ("", None) else v
 
     @field_validator("jwt_signing_key")
     @classmethod

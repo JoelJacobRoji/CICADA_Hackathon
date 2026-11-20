@@ -13,6 +13,15 @@ from sqlalchemy import create_engine, text
 UNREACHABLE = "postgresql://nobody:nothing@127.0.0.1:1/none"
 
 
+@pytest.fixture(autouse=True)
+def _no_real_llm(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """ISOLATION: tests never call Gemini (quota, cost, data egress), whatever .env says."""
+    monkeypatch.setenv("AEGIS_SAAS_GEMINI_API_KEY", "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def unit_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Settings that never touch a real database."""
@@ -111,6 +120,9 @@ def _clear_caches() -> None:
     from saas_api.health import runtime as health_runtime
 
     health_runtime.reset()
+    from saas_api.aiops import runtime as aiops_runtime
+
+    aiops_runtime.reset()
     from saas_api.db import owner_engine
 
     for eng_cache in (app_engine, owner_engine):

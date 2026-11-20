@@ -2,7 +2,7 @@
 
 | ID | Issue | Impact | Mitigation | Status |
 |---|---|---|---|---|
-| K1 | Official organizer stream not yet supplied | M2 cannot be claimed | Simulator labelled SIMULATED; adapter interface ready for mapping | OPEN (BLOCKED on input) |
+| K1 | Official organizer stream | Organizers confirmed (2026-11-20) no dataset will be provided | AEGIS synthetic simulator is the data source; still labelled SIMULATED; JSONL/HTTP adapters remain for any future feed | RESOLVED |
 | K2 | Workspace inside OneDrive (sync paused) | If sync resumes, SQLite/node_modules corruption risk | Keep sync paused; DB files can be relocated via env var | OPEN (accepted) |
 | K3 | Laptop free RAM ~3.4 GB at preflight | Swapping under load tests | Close apps; SaaS on VPS reduces local load | OPEN |
 | K4 | Node v26 very new | Possible Vite/tooling incompatibility | `fnm use 22` fallback | OPEN |
@@ -31,3 +31,7 @@
 | K27 | Sign-out deletes the session cookie but the stateless JWT stays valid until expiry (30 min) if copied elsewhere | Stolen-cookie window | Production: server-side session revocation list or short TTL + refresh | ACCEPTED |
 | K28 | Local dashboard preview via Vite proxy to the VPS fails (Secure cookie over plain HTTP) | Dev convenience only | Use local SaaS for dev, or verify on the VPS | ACCEPTED |
 | K29 | Settings page states the engine's hysteresis/offline constants as text (not read from the API) | Could drift if constants change | Expose engine constants via /settings (Phase 6 cleanup) | OPEN |
+| K30 | AIOps open incidents/alert state are in memory; after a SaaS restart, open incidents stay in the DB but new alerts start fresh incidents (baselines and topology ARE restored) | A restart mid-incident can split one incident in two | Rehydrate open incidents + alerts at startup (Phase 7 reliability work) | OPEN |
+| K31 | Gemini free tier: rate/quota limits and no data-processing agreement | Explanations may be missing (fallback text shown); unsuitable for real customer data | Paid tier + DPA for production; eu-west already excluded | ACCEPTED |
+| K32 | Grounding validator is lexical (IDs, numbers, dates, times, codes) - it cannot detect a wrong claim built only from true facts | A fluent but wrong causal sentence could pass | Deterministic cause/priority remain authoritative and shown first; LLM text labelled as an explanation | ACCEPTED |
+| K33 | Notification pull every 5 s -> device alert latency up to ~5 s + incident detection time | Not instant push | Long-poll or WebSocket for collectors if needed | ACCEPTED |

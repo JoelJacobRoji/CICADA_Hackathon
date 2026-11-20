@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from .config import get_settings
 from .egress.ledger import verify_chain
+from .egress.notifications import list_local
 from .security import bearer_dependency
 
 log = structlog.get_logger("collector.local_api")
@@ -131,6 +132,20 @@ def build_router() -> APIRouter:
         d = dict(row)
         d["payload"] = json.loads(d.pop("payload_json"))
         return d
+
+    @router.get("/notifications")
+    def notifications(request: Request, limit: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
+        """Device alerts from the SaaS, re-identified with local source names."""
+        p = _db(request)
+        ch = getattr(request.app.state, "notifications", None)
+        return {
+            "channel": (
+                {"webhook": bool(ch.webhook_url), "last_error": ch.last_error}
+                if ch
+                else {"state": "disabled (no AEGIS_COL_COLLECTOR_TOKEN)"}
+            ),
+            "items": list_local(p.conn, p.lock, limit),
+        }
 
     @router.get("/pseudonyms/{source_pid}")
     def lookup(request: Request, source_pid: str) -> dict[str, str]:

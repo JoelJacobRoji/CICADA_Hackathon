@@ -13,7 +13,7 @@ Judging phase key: J1 Problem & Ideation (10) · J2 Architecture (25) · J3 Prot
 | ID | Requirement | Guide § | Module | Test / evidence | Judging | Eng. phase | Status |
 |---|---|---|---|---|---|---|---|
 | M1 | Real-time targets measured from timestamps on the telemetry stream | §2, §3 | `apps/web` latency probe, `apps/saas-api/metrics`, `tests/performance` | `docs/judging/evidence/latency_report.json` (P95, n, method) | J3 (10 marks), J4 | 7, 9 | PLANNED |
-| M2 | Same organizer-provided simulated telemetry stream | §3 | `apps/collector/adapters` | Adapter ingests official stream sample; schema validation report | J3 | 3 → final integration | **BLOCKED** (official stream not yet supplied; dev simulator approved, labelled SIMULATED) |
+| M2 | Same organizer-provided simulated telemetry stream | §3 | `apps/collector/adapters` | Adapter ingests official stream sample; schema validation report | J3 | 3 → final integration | **RESOLVED BY ORGANIZERS (2026-11-20): no dataset will be provided; teams use their own synthetic data.** The AEGIS simulator (schema-compatible, scenario-injectable, labelled SIMULATED) is the official data source. |
 | M3 | Egress proof panel: exactly what each payload contained before leaving | §2, §3 | `apps/collector/egress`, `apps/web` Privacy Glass | Ledger entry hash == SaaS-received hash for chosen payload_id | J3, J4 | 3, 8 | PLANNED |
 
 ## 2. Core architecture & data protection
