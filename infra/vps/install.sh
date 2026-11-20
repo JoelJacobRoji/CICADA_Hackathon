@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # AEGIS SaaS - VPS installer (idempotent). Run as root, one stage at a time:
 #   ssh incendium 'bash -s' -- <stage> [args] < infra/vps/install.sh
-# Stages: backup | runtime <git_commit> | service | nginx-http | cert <email-or-none> | nginx-https | status
+# Stages: backup | runtime <git_commit> | service | nginx-http | cert <email-or-none> | nginx-https | web | status
 # Secrets (/etc/aegis/saas.env) are written separately over SSH stdin, never by this script.
 set -euo pipefail
 
@@ -78,6 +78,21 @@ case "$stage" in
     nginx -t
     systemctl reload nginx
     log "nginx stage 2 (https) live"
+    ;;
+
+  web)
+    # Atomic swap of the static dashboard build uploaded to $INFRA/web-dist (built locally from
+    # a pushed commit; the VPS has no Node toolchain).
+    test -f "$INFRA/web-dist/index.html"
+    rm -rf /var/www/aegis-web.new
+    cp -r "$INFRA/web-dist" /var/www/aegis-web.new
+    chown -R root:root /var/www/aegis-web.new
+    find /var/www/aegis-web.new -type d -exec chmod 0755 {} +
+    find /var/www/aegis-web.new -type f -exec chmod 0644 {} +
+    rm -rf /var/www/aegis-web.old
+    [ -d /var/www/aegis-web ] && mv /var/www/aegis-web /var/www/aegis-web.old
+    mv /var/www/aegis-web.new /var/www/aegis-web
+    log "dashboard deployed ($(cat /var/www/aegis-web/build.txt 2>/dev/null || echo 'no build info'))"
     ;;
 
   status)

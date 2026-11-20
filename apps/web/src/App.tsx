@@ -1,51 +1,40 @@
-import { useEffect, useState } from 'react'
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
+import { AuthProvider, useAuth } from './auth/auth'
+import { Layout } from './components/Layout'
+import { Fleet } from './pages/Fleet'
+import { Login } from './pages/Login'
+import { Infrastructure, Network } from './pages/MetricsPage'
+import { Overview } from './pages/Overview'
+import { Security } from './pages/Security'
+import { Settings } from './pages/Settings'
+import { SourceDetail } from './pages/SourceDetail'
 
-type Status = 'checking' | 'ok' | 'unreachable'
-
-const SERVICES = [
-  { name: 'SaaS API', url: 'http://127.0.0.1:9001/healthz' },
-  { name: 'Collector (local)', url: 'http://127.0.0.1:9100/healthz' },
-] as const
-
-async function probe(url: string): Promise<Status> {
-  try {
-    const r = await fetch(url)
-    return r.ok ? 'ok' : 'unreachable'
-  } catch {
-    return 'unreachable'
-  }
+function Gate() {
+  const { me, checking } = useAuth()
+  if (checking) return <p className="muted center" role="status">Loading…</p>
+  if (!me) return <Login />
+  return (
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<Overview />} />
+        <Route path="fleet" element={<Fleet />} />
+        <Route path="infrastructure" element={<Infrastructure />} />
+        <Route path="network" element={<Network />} />
+        <Route path="security" element={<Security />} />
+        <Route path="sources/:pid" element={<SourceDetail />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="*" element={<p className="empty">Page not found. <Link to="/">Back to overview</Link></p>} />
+      </Route>
+    </Routes>
+  )
 }
 
 export function App() {
-  const [status, setStatus] = useState<Record<string, Status>>(
-    Object.fromEntries(SERVICES.map((s) => [s.name, 'checking'])),
-  )
-
-  useEffect(() => {
-    SERVICES.forEach(async (s) => {
-      const st = await probe(s.url)
-      setStatus((prev) => ({ ...prev, [s.name]: st }))
-    })
-  }, [])
-
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <p className="text-xs uppercase tracking-[0.2em] text-ink-muted">Phase 2 · foundation build</p>
-      <h1 className="mt-2 text-3xl font-semibold">AEGIS</h1>
-      <p className="mt-2 text-ink-muted">
-        Privacy-first observability. This screen only checks that the services are up. It shows no
-        operational data.
-      </p>
-      <ul className="mt-8 divide-y divide-white/10 rounded-lg bg-surface-raised">
-        {SERVICES.map((s) => (
-          <li key={s.name} className="flex items-center justify-between px-4 py-3">
-            <span>{s.name}</span>
-            <span data-testid={`status-${s.name}`} className="font-mono text-sm">
-              {status[s.name]}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </main>
+    <BrowserRouter>
+      <AuthProvider>
+        <Gate />
+      </AuthProvider>
+    </BrowserRouter>
   )
 }

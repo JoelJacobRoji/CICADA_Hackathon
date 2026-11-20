@@ -16,7 +16,7 @@ if [ "${1:-}" = "--purge" ]; then
   rm -f /etc/systemd/system/aegis-saas.service /etc/nginx/sites-available/aegis
   systemctl daemon-reload
   /opt/certbot/bin/certbot delete --cert-name aegis --non-interactive 2>/dev/null || true
-  rm -rf /opt/aegis /etc/aegis /var/www/aegis-acme
+  rm -rf /opt/aegis /etc/aegis /var/www/aegis-acme /var/www/aegis-web /var/www/aegis-web.old
   id aegis >/dev/null 2>&1 && userdel aegis
   echo "[aegis-rollback] purged"
 fi

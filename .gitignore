@@ -22,3 +22,6 @@ apps/collector/data/
 .idea/
 *.tsbuildinfo
 *.local
+test-results/
+playwright-report/
+blob-report/
