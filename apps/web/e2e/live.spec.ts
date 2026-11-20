@@ -2,6 +2,13 @@ import { expect, test, type Page } from '@playwright/test'
 
 const SHOTS = process.env.AEGIS_E2E_SHOTS ?? '../../docs/judging/evidence/screenshots'
 
+/** Every chart on the page has real data (>= 2 windows) before we capture evidence. */
+async function chartsLoaded(page: Page) {
+  await expect.poll(async () => page.locator('[role="img"]').evaluateAll((els) =>
+    els.length > 0 && els.every((e) => Number(/: (\d+) windows/.exec(e.getAttribute('aria-label') ?? '')?.[1] ?? 0) >= 2)),
+  { timeout: 20_000 }).toBe(true)
+}
+
 // The session comes from the `setup` project (auth.setup.ts), signed in once per run.
 async function signIn(page: Page) {
   await page.goto('/')
@@ -42,6 +49,7 @@ test('@live infrastructure charts update WITHOUT reload (WebSocket)', async ({ p
   // New 2 s windows arrive over the WebSocket; the rendered data must change in place.
   await expect.poll(async () => chart.getAttribute('aria-label'), { timeout: 30_000 }).not.toBe(before)
   expect(reloads, 'page must not reload').toEqual([])
+  await chartsLoaded(page)
   await page.screenshot({ path: `${SHOTS}/infrastructure.png`, fullPage: true })
 })
 
@@ -52,6 +60,7 @@ test('@live source detail explains its state', async ({ page }) => {
   await expect(page.getByText('Current health')).toBeVisible()
   await expect(page.getByText('Factors (latest window per metric)')).toBeVisible()
   await expect(page.getByText('State history')).toBeVisible()
+  await chartsLoaded(page)
   await page.screenshot({ path: `${SHOTS}/source-detail.png`, fullPage: true })
 })
 

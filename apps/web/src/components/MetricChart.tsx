@@ -73,13 +73,20 @@ export function MetricChart({
     const ink = token('--ink-muted')
     const grid = token('--grid')
     const series = token('--series-1')
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const real = data.filter((d) => d[1] !== null)
+    // A lone point: show it, and give the time axis a sane +/-1 min range (ECharts would pad
+    // a single timestamp to +/-1 day, which reads as "no data for two days").
+    const lone = real.length === 1 ? real[0]![0] : null
     c.setOption(
       {
-        animation: !reduced,
-        grid: { left: 44, right: 56, top: 12, bottom: 24 },
+        // No draw-in animation: data refreshes every 2 s and re-animating the whole line each
+        // time is distracting (and made screenshots show half-drawn lines).
+        animation: false,
+        grid: { left: 44, right: 16, top: 14, bottom: 24 },
         xAxis: {
           type: 'time',
+          min: lone !== null ? lone - 60_000 : undefined,
+          max: lone !== null ? lone + 60_000 : undefined,
           axisLine: { lineStyle: { color: grid } },
           axisLabel: { color: ink, fontSize: 10, hideOverlap: true },
           splitLine: { show: false },
@@ -111,7 +118,7 @@ export function MetricChart({
             name: title ?? metricLabel(metric),
             data,
             connectNulls: false,
-            showSymbol: false,
+            showSymbol: real.length < 3, // too few points to draw a visible line
             symbolSize: 8,
             step: unit === 'bool' ? 'end' : undefined,
             lineStyle: { width: 2, color: series },
@@ -122,11 +129,16 @@ export function MetricChart({
               symbol: 'none',
               lineStyle: { color: ink, type: 'dashed', width: 1 },
               // Inside the plot, just above each line, on a surface backing so data never hides it.
+              // Labels alternate right/left so closely spaced thresholds (e.g. 90/95) never overlap.
               label: {
                 color: ink, fontSize: 10, formatter: '{b}', position: 'insideEndTop',
                 backgroundColor: token('--surface'), padding: [0, 3], distance: 1,
               },
-              data: thresholds.map((t) => ({ name: t.label, yAxis: t.value })),
+              data: thresholds.map((t, i) => ({
+                name: t.label,
+                yAxis: t.value,
+                label: { position: i % 2 === 1 ? 'insideStartTop' : 'insideEndTop' },
+              })),
             },
           },
         ],
@@ -140,9 +152,13 @@ export function MetricChart({
       ref={el}
       style={{ height }}
       role="img"
-      aria-label={`${title ?? metricLabel(metric)}: ${data.length} windows${
-        data.length ? `, latest ${fmtValue(data[data.length - 1]![1], unit)}` : ''
-      }`}
+      aria-label={(() => {
+        const real = data.filter((d) => d[1] !== null)
+        const last = real[real.length - 1]
+        return `${title ?? metricLabel(metric)}: ${real.length} windows${
+          last ? `, latest ${fmtValue(last[1], unit)}` : ''
+        }`
+      })()}
     />
   )
 }
