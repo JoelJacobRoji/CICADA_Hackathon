@@ -28,3 +28,6 @@ blob-report/
 
 # Local demo output (device-alert webhook receiver): contains re-identified local names
 /data/
+
+front end*.jpg
+
