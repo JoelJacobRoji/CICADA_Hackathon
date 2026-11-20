@@ -257,7 +257,8 @@ class AiopsEngine:
         """Collector offline and missing source data, from health-engine transitions."""
         changes: list[Change] = []
         with self.lock:
-            for t in transitions:
+            # Collectors first: a source's NO_DATA can then join its collector's outage incident.
+            for t in sorted(transitions, key=lambda t: t.entity_type != "collector"):
                 codes = {r.get("code") for r in t.reasons}
                 if (
                     t.entity_type == "collector"
@@ -489,6 +490,18 @@ class AiopsEngine:
     def _correlate(self, a: Alert) -> tuple[Incident | None, dict[str, Any]]:
         now, cfg = self.clock(), self.cfg
         incs = sorted(self._open_incidents(a.tenant_id), key=lambda i: i.opened_at)
+        # C-COLLECTOR: sources that stop reporting while their collector is offline are symptoms
+        # of that outage, not of a network/application problem.
+        if a.family == "NO_DATA":
+            for inc in incs:
+                offline = any(self.alerts[x].family == "OFFLINE" for x in inc.alert_ids)
+                if offline and (now - inc.updated_at).total_seconds() <= 60:
+                    return inc, {
+                        "rule": "C-COLLECTOR",
+                        "alert_id": str(a.id),
+                        "detail": f"{short(a.entity_id)} stopped reporting while its collector "
+                        "was offline",
+                    }
         # C-SRC: same entity, recent activity
         for inc in incs:
             if (now - inc.updated_at).total_seconds() > cfg.source_span_s:
@@ -500,8 +513,8 @@ class AiopsEngine:
                     "entity": a.entity_id,
                     "detail": f"same source {short(a.entity_id)}",
                 }
-        # C-TOPO: dependency-connected sources
-        if a.entity_type == "source":
+        # C-TOPO: dependency-connected sources (missing data is not a degradation signal)
+        if a.entity_type == "source" and a.family != "NO_DATA":
             t = self.topo(a.tenant_id)
             for inc in incs:
                 if (now - inc.updated_at).total_seconds() > cfg.topo_span_s:
@@ -560,7 +573,9 @@ class AiopsEngine:
     def _root_cause(self, inc: Incident, alerts: list[Alert]) -> tuple[str | None, str, str]:
         t = self.topo(inc.tenant_id)
         srcs: dict[str, datetime] = {}
-        for a in alerts:
+        # Missing data never decides the cause while real degradation signals exist.
+        basis = [a for a in alerts if a.family != "NO_DATA"] or alerts
+        for a in basis:
             if a.entity_type == "source":
                 srcs[a.entity_id] = min(srcs.get(a.entity_id, a.onset), a.onset)
         if not srcs:

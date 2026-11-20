@@ -325,6 +325,30 @@ class LlmWorker:
                 row["grounding"] = {"error": res.error}
             else:
                 g = grounding_check(res.response, prompt["evidence"])
+                if not g["ok"]:
+                    # One self-correction attempt: tell the model exactly what was rejected.
+                    # The retry is validated by the same grounding check (never trusted blindly).
+                    retry = {
+                        **prompt,
+                        "user": prompt["user"]
+                        + "\n\nYour previous answer was REJECTED for: "
+                        + "; ".join(g["violations"])
+                        + ". Answer again using only facts from the EVIDENCE JSON and include "
+                        "every section.",
+                    }
+                    time.sleep(max(0.0, float(c.get("min_seconds_between_calls", 4))))
+                    self.last_call = time.monotonic()
+                    res2 = llm_client.explain(
+                        s.gemini_api_key.get_secret_value(), c, retry, self.http
+                    )
+                    row["latency_ms"] = (row["latency_ms"] or 0) + res2.latency_ms
+                    if res2.status == "ok":
+                        g2 = grounding_check(res2.response, prompt["evidence"])
+                        g2["first_attempt_violations"] = g["violations"]
+                        g2["attempts"] = 2
+                        res, g = res2, g2
+                        row["prompt"] = {"system": retry["system"], "user": retry["user"]}
+                        row["model"] = res2.model
                 row["response"] = res.response
                 row["grounding"] = g
                 row["status"] = "ok" if g["ok"] else "rejected_ungrounded"

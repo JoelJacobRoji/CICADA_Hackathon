@@ -255,6 +255,7 @@ def test_worker_grounded_response_creates_ai_notification(with_key, monkeypatch)
 def test_worker_ungrounded_response_is_rejected_not_shown(with_key, monkeypatch):
     eng, inc = _incident()
     monkeypatch.setattr(aiops, "engine", lambda: eng)
+    monkeypatch.setattr(aiops.time, "sleep", lambda s: None)
     bad = {
         "summary": "The database src_ffffffffffffffff crashed at 03:14 with 99.9% load.",
         "reasoning": [],
@@ -271,3 +272,27 @@ def test_worker_ungrounded_response_is_rejected_not_shown(with_key, monkeypatch)
     row = _worker(handler).process(inc)
     assert row["status"] == "rejected_ungrounded"
     assert not [n for n in aiops.store._notifications if n["kind"] == "ai_explanation"]  # noqa: SLF001
+
+
+def test_worker_retries_once_with_violations_and_accepts_grounded_retry(with_key, monkeypatch):
+    eng, inc = _incident()
+    monkeypatch.setattr(aiops, "engine", lambda: eng)
+    ev = build_prompt(inc.explanation)["evidence"]
+    bad = {"summary": "x", "reasoning": [], "verify_next": [], "caveats": []}  # section missing
+    good = _good_response(ev)
+    seen = []
+
+    def handler(req):
+        body = json.loads(req.content)
+        seen.append(body["contents"][0]["parts"][0]["text"])
+        out = bad if len(seen) == 1 else good
+        return httpx.Response(
+            200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(out)}]}}]}
+        )
+
+    monkeypatch.setattr(aiops.time, "sleep", lambda s: None)
+    row = _worker(handler).process(inc)
+    assert len(seen) == 2 and "REJECTED for: why_these_actions missing" in seen[1]
+    assert row["status"] == "ok" and row["grounding"]["attempts"] == 2
+    assert row["grounding"]["first_attempt_violations"]
+    assert row["prompt"]["user"] == seen[1]  # the exact prompt that produced the shown answer

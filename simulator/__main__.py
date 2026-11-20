@@ -47,7 +47,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--url", default="http://127.0.0.1:9100")
     ap.add_argument("--rate", type=float, default=100.0, help="metric events per second")
     ap.add_argument("--duration", type=float, default=60.0, help="seconds")
-    ap.add_argument("--scenario", action="append", choices=sorted(SCENARIOS), default=[])
+    ap.add_argument(
+        "--scenario",
+        action="append",
+        default=[],
+        help=f"one of {sorted(SCENARIOS)}, optionally NAME@SECONDS (own start time)",
+    )
     ap.add_argument("--scenario-at", type=float, default=5.0, help="seconds after start")
     ap.add_argument("--burst", action="append", default=[], help="start:duration:rate")
     ap.add_argument("--seed", type=int, default=7)
@@ -56,10 +61,14 @@ def main(argv: list[str] | None = None) -> None:
 
     gen = Generator(seed=args.seed)
     start = datetime.now(UTC)
-    for name in args.scenario:
+    for spec in args.scenario:
+        name, _, at = spec.partition("@")
+        if name not in SCENARIOS:
+            ap.error(f"unknown scenario {name!r}; choose from {sorted(SCENARIOS)}")
+        t = float(at) if at else args.scenario_at
         sc = SCENARIOS[name]()
-        gen.add_scenario(sc, start + timedelta(seconds=args.scenario_at))
-        print(f"[SIMULATED] scenario {name} at t+{args.scenario_at:.0f}s: {sc.description}")
+        gen.add_scenario(sc, start + timedelta(seconds=t))
+        print(f"[SIMULATED] scenario {name} at t+{t:.0f}s: {sc.description}")
     bursts = [_parse_burst(b) for b in args.burst]
 
     if args.write_jsonl:

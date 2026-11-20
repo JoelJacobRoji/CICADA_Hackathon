@@ -318,3 +318,51 @@ def test_warm_start_seed_excludes_incident_values(eng):
     eng.baselines.seed(key, noisy(35, 2, 100) + [80.0] * 40, T0)
     s = eng.baselines.series[key]
     assert max(s.hist) < 50 and len(s.hist) == 100
+
+
+# ---- Regression (production e2e, 20:29): when the collector stopped, NO_DATA alerts joined the
+# S5 incident via topology and the root cause flipped to the network device.
+
+
+def _tr(etype, eid, code, to_state, clk):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        entity_type=etype,
+        entity_id=eid,
+        to_state=to_state,
+        tenant_id=TENANT,
+        region="ap-south",
+        at_utc=clk.now,
+        reasons=[{"code": code}],
+    )
+
+
+def test_collector_outage_groups_no_data_and_keeps_real_root_cause(eng, clk):
+    eng.observe_edges(
+        TENANT,
+        [
+            {"from_pid": SRV, "to_pid": NET, "relation": "routes_through"},
+            {"from_pid": APP1, "to_pid": NET, "relation": "routes_through"},
+        ],
+    )
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 40) + [80.0] * 3)
+    (s5,) = incidents(eng)
+    clk.now += timedelta(seconds=30)
+    eng.observe_health(
+        [
+            _tr("source", NET, "NO_DATA", "Poor", clk),
+            _tr("source", SRV, "NO_DATA", "Poor", clk),
+            _tr("source", APP1, "NO_DATA", "Poor", clk),
+            _tr("collector", "col_t_01", "HEARTBEAT_MISSING", "Poor", clk),  # same sweep, any order
+        ]
+    )
+    assert s5.root_entity == SRV and s5.title.startswith("Baseline deviation")
+    outage = next(
+        i for i in incidents(eng) if any(eng.alerts[x].family == "OFFLINE" for x in i.alert_ids)
+    )
+    nodata = [eng.alerts[x] for x in outage.alert_ids if eng.alerts[x].family == "NO_DATA"]
+    # every source's missing data is a symptom of the outage (C-COLLECTOR runs before C-SRC)
+    assert {a.entity_id for a in nodata} == {NET, APP1, SRV}
+    assert outage.title == "Collector col_t_01 offline"
+    assert "C-COLLECTOR" in {c["rule"] for c in outage.correlation}
