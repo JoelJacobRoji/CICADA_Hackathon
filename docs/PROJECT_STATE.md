@@ -1,12 +1,13 @@
 # AEGIS — Project State
 
-- **Current phase:** 5 (Dashboard + health engine + K22): complete, awaiting user review
-- **Last approved phase:** 5 (approved 2026-11-20)
-- **Next gate:** Phase 6 (AIOps) pre-phase checkpoint
-- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phases 1-3 + CI fix pushed (HEAD 82584c9, CI green 2026-11-20). HEAD 39cd0d6 (CI green). Deployed: backend ea35e09 (unchanged since), dashboard 39cd0d6. Phase 5 docs + screenshots UNCOMMITTED. **Do not commit/push until the user says so.**
-- **Database:** Supabase (ADR-18, Free plan) at runtime: `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), migration 0001 applied and verified 2026-11-20. Local docker `aegis-pg` (127.0.0.1:55432) used by automated tests only.
+- **Current phase:** 6 (AIOps + device alerts + Gemini explanations): complete and deployed, awaiting user review
+- **Last approved phase:** 6 (approved 2026-11-20). **Phases 7-8 deferred by user decision** (implement after the 2026-11-21 09:00 evaluation); next: demo/validation (9-10) on request
+- **Evaluation:** 2026-11-21 09:00 - criteria: functional product, two-tier (frontend + backend + DB), AI engine, security. Demo: `scripts/demo.ps1` + `docs/DEMO_SCRIPT.md`
+- **Git / deployed:** origin/main f8f1920 = backend AND dashboard on the VPS (build.txt). Live e2e 11/11 on f8f1920. **The user commits and pushes; never commit/push without being told.**
+- **Database:** Supabase (ADR-18, Free plan): `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), both at migration 0005 (verified: RLS + policies on all tenant tables, aegis_app no DELETE). Local docker `aegis-pg` (127.0.0.1:55432) for automated tests only.
+- **LLM:** Gemini (free tier) key in apps/saas-api/.env and VPS /etc/aegis/saas.env (root:aegis 0640); enabled for ap-south only (eu-west disabled: residency)
 - **Hackathon clock:** started ≈ 1 h before Phase 1 began on 2026-11-20
-- **Product code:** contracts; SaaS skeleton (+RLS); collector pipeline complete up to the outbox (adapters, scrubber, pseudonyms, 2 s windows, local health, auth detector, canary + fingerprints, hash-chained ledger, local console API, retention); dev simulator with S1/S3/S4/S5/S6. No sender, no ingest, no UI yet.
+- **Product code:** collector (pipeline, privacy, ledger, sender, heartbeat, device-alert pull + local webhook); SaaS (ingest, tenancy/RLS, auth, health engine, AIOps engine, incidents API, notifications, grounded Gemini explanations, WebSocket); dashboard (overview, fleet, metrics, security, incident center + detail, security & privacy); simulator S1/S3/S4/S5/S6 with timed scenarios.
 - **Environment:** Docker Desktop running; container `aegis-pg` running; `.venv` (Python 3.11.9) + `apps/web/node_modules` installed; `.env` files generated locally (git-ignored)
 
 ## VPS facts (read-only inspection, 2026-11-20)
@@ -17,7 +18,7 @@
 
 ## Pending user inputs
 - Approval of VPS deployment approach (hostname, Docker install, nginx server block): asked at Phase 2 checkpoint
-- Official organizer telemetry stream (to be supplied later → adapter integration)
+- (resolved) Organizers provide no dataset: the simulator is the official data source
 
 ## Docs index
 See `docs/requirements/`, `docs/architecture/`, `docs/security/`, `docs/judging/`, `docs/DECISIONS.md`.
