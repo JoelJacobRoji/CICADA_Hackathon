@@ -1,0 +1,40 @@
+[Unit]
+Description=AEGIS SaaS API (Tier 2, metadata-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aegis
+Group=aegis
+WorkingDirectory=/opt/aegis/app/apps/saas-api
+EnvironmentFile=/etc/aegis/saas.env
+# Loopback only: nginx is the only internet-facing component. One worker: the WS hub is in-process.
+ExecStart=/opt/aegis/app/.venv/bin/uvicorn saas_api.main:app --host 127.0.0.1 --port 9001 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header
+Restart=on-failure
+RestartSec=3
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadOnlyPaths=/opt/aegis
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

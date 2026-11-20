@@ -126,7 +126,8 @@ def main() -> None:
         "data_source": "SIMULATED (AEGIS dev simulator), live services, Supabase " + a.region,
         "collector_id": collector_id,
         "ledger_payloads": len(ledger),
-        "stored_in_saas": len(saas),
+        "stored_in_saas": len(set(ledger) & set(saas)),  # this run's ledger IDs found in SaaS
+        "saas_rows_for_collector_all_runs": len(saas),
         "missing_in_saas": len(missing),
         "sha256_mismatches": len(mismatched),
         "delivery_latency_ledger_to_saas_s": {

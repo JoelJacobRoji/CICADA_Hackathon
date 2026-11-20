@@ -1,9 +1,9 @@
 # AEGIS — Project State
 
-- **Current phase:** 4 (SaaS ingest & tenancy): complete, awaiting user review
-- **Last approved phase:** 4 (approved 2026-11-20)
-- **Next gate:** Phase 4b (VPS deployment) checkpoint and/or Phase 5 pre-phase checkpoint
-- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phases 1-3 + CI fix pushed (HEAD 82584c9, CI green 2026-11-20). Phase 4 UNCOMMITTED. **Do not commit/push until the user says so.**
+- **Current phase:** 4b (VPS deployment): complete, awaiting user review
+- **Last approved phase:** 4b (approved 2026-11-20)
+- **Next gate:** Phase 5 pre-phase checkpoint (latency fix K22 proposed first)
+- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phases 1-3 + CI fix pushed (HEAD 82584c9, CI green 2026-11-20). Phase 4 pushed as ee93a35 (CI green). Phase 4b files UNCOMMITTED. **Do not commit/push until the user says so.**
 - **Database:** Supabase (ADR-18, Free plan) at runtime: `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), migration 0001 applied and verified 2026-11-20. Local docker `aegis-pg` (127.0.0.1:55432) used by automated tests only.
 - **Hackathon clock:** started ≈ 1 h before Phase 1 began on 2026-11-20
 - **Product code:** contracts; SaaS skeleton (+RLS); collector pipeline complete up to the outbox (adapters, scrubber, pseudonyms, 2 s windows, local health, auth detector, canary + fingerprints, hash-chained ledger, local console API, retention); dev simulator with S1/S3/S4/S5/S6. No sender, no ingest, no UI yet.
@@ -30,3 +30,8 @@ See `docs/requirements/`, `docs/architecture/`, `docs/security/`, `docs/judging/
 | globex | eu-west (Frankfurt) | col_globex_01 (token in apps/collector/.env.globex) | ops@globex.example |
 
 Operator passwords: `apps/saas-api/.demo-operators.local` (git-ignored; latest line per email wins). Reset with `uv run python -m saas_api.admin reset-password --email <e> --generate`.
+
+## Deployment (Phase 4b, 2026-11-20)
+- SaaS live at `https://aegis.162-35-42-114.sslip.io` (VPS 162.35.42.114, US; systemd `aegis-saas`; nginx site `aegis`; LE cert `aegis`), commit ee93a35. Runbook: `docs/runbooks/VPS_DEPLOY.md`.
+- Laptop collector `AEGIS_COL_SAAS_BASE_URL` now points at the VPS.
+- The other VPS app is untouched (verified before/after).

@@ -13,8 +13,8 @@
 | Web deps | READY | `npm --prefix apps/web test` |
 | Supabase projects (2 regions, Free) | READY (migrations 0001-0003, demo tenants seeded) | `GET :9001/readyz` |
 | Playwright browsers | APPROVED, not installed (Phase 9) | `npx playwright --version` |
-| VPS access | READY (ssh alias `incendium`, key auth; read-only so far) | `ssh incendium hostname` |
-| TLS (existing nginx + certbot, new server block) | PLANNED (deploy, needs approval) | `curl -vI https://<host>` |
+| VPS access + AEGIS deployment | READY (deployed Phase 4b; see VPS_DEPLOY.md) | `curl https://aegis.162-35-42-114.sslip.io/readyz` |
+| TLS (existing nginx + certbot, new server block) | READY (LE cert `aegis`, TLS 1.3, renews via existing cron + reload hook) | `curl -sI https://aegis.162-35-42-114.sslip.io/healthz` |
 | Official telemetry stream | BLOCKED (pending) | adapter sample ingest |
 
 Secrets: only in git-ignored `.env` files created locally. Never commit them, never paste them into chat.

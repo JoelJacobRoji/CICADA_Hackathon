@@ -34,3 +34,6 @@
 | ADR-30 | 2026-11-20 | Operator session = HS256 JWT (30 min) in httpOnly SameSite=Strict cookie; WS auth by same cookie + Origin allow-list; in-process WS hub | server sessions; SSE | simple, testable; multi-instance needs a shared bus (documented) | Accepted |
 | ADR-31 | 2026-11-20 | Migration 0003: no PUBLIC EXECUTE on any aegis function (incl. default privileges) | edit 0002 | 0002 already applied on Supabase; forward-only fix | Accepted |
 | ADR-32 | 2026-11-20 | `check.ps1` runs the suite twice: normal and CI parity (no .env) | rely on GitHub CI | catches K16-class failures before pushing (it caught 1 already in Phase 4) | Accepted |
+| ADR-33 | 2026-11-20 | VPS runtime = uv-managed CPython 3.11 + systemd (hardened), no Docker | Docker Compose | VPS co-hosts another app: no daemon, no iptables changes, ~67 MB RSS | Accepted (approved in 4b checkpoint) |
+| ADR-34 | 2026-11-20 | VPS holds only app-role DB URLs + its own JWT key; owner URLs stay on the laptop (migrations/admin CLI) | full .env copy | least privilege: a VPS compromise cannot alter schema/RLS | Accepted |
+| ADR-35 | 2026-11-20 | Certificates via certbot webroot with own cert-name; never the nginx plugin | `--nginx` | plugin rewrites nginx config and could touch the other site | Accepted |

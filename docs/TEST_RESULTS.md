@@ -51,3 +51,12 @@
 | 4 | **Live E2E on Supabase (SIMULATED data)**: 40 s @100 ev/s + S1 + S3 -> 621 ledgered, 621 stored in Supabase ap-south, 0 missing, 0 sha256 mismatches, 0 leaks in any SaaS table; delivery latency ledger->Supabase p50 0.61 s / p95 1.13 s / max 2.56 s (n=621); acme operator sees 609 metrics + 2 S3 findings; initech operator sees 0 | MEASURED | `docs/judging/evidence/phase4_e2e_supabase.json` |
 | 4 | **Live residency on Supabase**: globex collector token -> Mumbai 401, Frankfurt 204; globex tenant + heartbeat only in eu-west | PASSED | live curl + queries |
 | 4 | Live service logs (SaaS 76 lines, collector 387): 0 collector tokens, operator passwords or S1 secrets | PASSED | grep |
+| 4b | GitHub CI on Phase 4 commit ee93a35 (python incl. pytest, web, secrets-guard) | PASSED | Actions run 44748914173 |
+| 4b | VPS baseline before change: existing app https 200 / http 301, cert SHA-256 5E:5F:BF:...:C0:70 | RECORDED | baseline |
+| 4b | Existing app after BOTH nginx reloads: https 200 / http 301, identical cert fingerprint; `nginx -t` clean | PASSED | post-checks |
+| 4b | Service: systemd active, listens 127.0.0.1:9001 only, /readyz 200 (both Supabase regions), /docs + /openapi.json 404 (prod), 67 MB RSS | PASSED | VPS checks |
+| 4b | External: `https://aegis.162-35-42-114.sslip.io/readyz` 200; TLS 1.3 TLS_AES_256_GCM_SHA384; Let's Encrypt (YE2) cert for exact hostname, valid to 2027-02-18, hostname verified; HTTP -> 301 HTTPS; TLS 1.1 refused; HSTS, nosniff, X-Frame-Options DENY, Referrer-Policy present; /docs, /openapi.json, /redoc 404; port 9001 unreachable from internet; POST /api/v1/telemetry -> 404 | PASSED | laptop over internet |
+| 4b | **Live E2E over HTTPS (SIMULATED data)**: laptop collector -> internet -> VPS nginx -> API -> Supabase ap-south; 40 s @100 ev/s + S1 + S3: 621/621 ledger IDs stored, 0 missing, 0 sha256 mismatches, 0 leaks in any SaaS table; acme sees 609 metrics, initech 0 via the public URL | PASSED | `docs/judging/evidence/phase4b_e2e_vps_https.json` |
+| 4b | **Delivery latency ledger -> SaaS over VPS: p50 10.3 s / p95 17.0 s / max 19.0 s (n=621)** vs 0.61 / 1.13 s with the SaaS on the laptop | MEASURED - **threatens T1 (P95 <= 10 s)**, see K22 | evidence json |
+| 4b | Latency breakdown: laptop->VPS /healthz 279 ms; ingest batch of 1 / 30 / 300 items = 3.0 / 3.3 / 4.5 s (fixed per-request cost); VPS (US) -> Supabase ap-south 242 ms/round trip, eu-west 89 ms | MEASURED | profiling |
+| 4b | VPS journal (158 lines): 0 errors, 0 tokens/passwords/S1 secrets/raw identifiers | PASSED | grep |

@@ -57,30 +57,33 @@ flowchart LR
 ```mermaid
 flowchart LR
   B["Operator browser<br/>laptop"]
-  C["Collector :9100<br/>127.0.0.1 only"]
-  W["Web dev server :5180<br/>or static build on VPS"]
+  C["Collector :9100<br/>127.0.0.1 only, laptop"]
   HS["Mobile hotspot<br/>NAT, public internet"]
-  V["VPS public IP :443<br/>Caddy"]
-  API["saas-api :9001<br/>docker network only"]
-  PG["postgres :5432<br/>docker network only"]
+  V["VPS 162.35.42.114 :443 US<br/>nginx, Let's Encrypt"]
+  API["saas-api :9001<br/>127.0.0.1 only, systemd"]
+  SA["Supabase ap-south<br/>Mumbai, session pooler"]
+  SE["Supabase eu-west<br/>Frankfurt, session pooler"]
 
   C -- "H1: HTTPS TLS1.3, Bearer collector token, JSON batch" --> HS
   HS -- "H2: TCP 443" --> V
-  V -- "H3: HTTP on internal docker bridge" --> API
-  API -- "H4: libpq, SCRAM auth, internal bridge" --> PG
+  V -- "H3: HTTP loopback" --> API
+  API -- "H4a: TLS sslmode=require, aegis_app role, RLS" --> SA
+  API -- "H4b: TLS sslmode=require, aegis_app role, RLS" --> SE
   B -- "H5: HTTPS + WSS, httpOnly session cookie" --> V
   B -- "H6: HTTP localhost, local admin token" --> C
 ```
 
-| Hop | From → To | Protocol | Auth | Data |
-|---|---|---|---|---|
-| H1/H2 | Collector → VPS | HTTPS (TLS 1.2+/1.3) | per-collector bearer token (hash stored server-side) | allow-listed metadata batches, heartbeats |
-| H3 | Caddy → saas-api | HTTP on private bridge | none (not exposed) | same |
-| H4 | saas-api → Postgres | libpq on private bridge | SCRAM, non-superuser role, RLS | tenant-scoped rows |
-| H5 | Browser → SaaS | HTTPS + WSS | operator JWT in httpOnly cookie | tenant metadata |
-| H6 | Browser → Collector | HTTP loopback only | local admin token | raw + masked records, ledger (Privacy Glass left pane) |
+| Hop | From → To | Protocol | Auth | Data | Measured (2026-11-20) |
+|---|---|---|---|---|---|
+| H1/H2 | Collector → VPS nginx | HTTPS, TLS 1.3 (LE cert) | per-collector bearer token (SHA-256 stored server-side) | allow-listed metadata batches, heartbeats | ~279 ms RTT over hotspot |
+| H3 | nginx → saas-api | HTTP on loopback | none (not exposed; :9001 unreachable externally) | same | — |
+| H4a/b | saas-api → Supabase (regional) | Postgres over TLS via session pooler | `aegis_app` (no BYPASSRLS), RLS per tenant | tenant-scoped rows, region-pinned | 242 ms (Mumbai) / 89 ms (Frankfurt) per round trip |
+| H5 | Browser → SaaS | HTTPS + WSS | operator JWT in httpOnly Secure SameSite=Strict cookie | tenant metadata | — |
+| H6 | Browser → Collector | HTTP loopback only | local admin token | raw + masked records, ledger (Privacy Glass left pane) | — |
 
-**Fallback topology (venue network failure):** the same Compose stack runs locally on the laptop with Caddy's internal CA. This is documented as a weaker trust boundary (same host).
+**Deployed (Phase 4b):** `https://aegis.162-35-42-114.sslip.io`. See `docs/runbooks/VPS_DEPLOY.md`.
+**Fallback topology (venue network failure):** run the SaaS on the laptop (`scripts/dev.ps1 -NoDb`, still Supabase) or fully local (Docker Postgres). Documented as a weaker trust boundary (same host).
+**Known limitation (K22):** one SaaS node in the US serves both regional databases. Production regional ingest nodes would sit next to each regional DB.
 
 ## 3. Data flow
 
