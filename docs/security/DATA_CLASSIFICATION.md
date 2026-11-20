@@ -38,3 +38,9 @@ Only `MetricSummary`, `SecuritySummary`, `Heartbeat` and `TopologyEdge` (see MET
 | `Failed password for admin from 10.20.30.40 port 52211 ssh2` ×25 | `{"kind":"security_summary","summary_code":"AUTH_FAILURE_BURST","failure_count":25,"distinct_user_count":1,"distinct_src_count":1,"source_pid":"src_9f2c…","risk_level":"high",…}` |
 | `db connect ok user=svc password=FAKE_P@ss123 api_key=FAKE_sk_live_51Hx…` | nothing from the message. The window's metric summary only. |
 | `{"source_id":"SRV_001","metric":"cpu_usage","value":95.0}` ×N | `{"source_pid":"src_4ab1…","metric":"cpu_usage","max":95.0,"mean":91.3,"count":10,…}` |
+
+## Implemented controls (Phase 3)
+- **Scrubber (display copy only):** private keys, JWTs, bearer tokens, AWS access/secret keys, `sk_/pk_/rk_` API keys, GitHub and Slack tokens, `password=`/`token=`/`api_key=`-style credentials, emails, IPv4. Attribute keys such as user, src_ip, host, email, password and token are redacted whole.
+- **Outbound schema:** `extra=forbid`, no free text, `source_pid` pattern, enums only (packages/contracts/outbound.py).
+- **Canary (fail closed):** pattern layer plus SHA-256 fingerprints of secret values seen locally (ADR-21).
+- **Egress ledger:** exact JSON, SHA-256 and hash chain, verifiable via `GET /local/egress/verify`.

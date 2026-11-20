@@ -1,0 +1,45 @@
+{
+  "data_source": "SIMULATED (AEGIS dev simulator, not the organizer stream)",
+  "run": "2026-11-20, laptop, 60 s @100 ev/s + 10 s burst @500 ev/s, scenarios s1+s3+s5 at t+10s",
+  "raw_events_stored": 11054,
+  "ingest_span_seconds": 69.6,
+  "avg_ingest_rate_per_s": 158.8,
+  "egress_payloads_by_kind": {
+    "metric_summary": 1044,
+    "security_summary": 2,
+    "topology_edge": 10
+  },
+  "outbox_by_status": {
+    "pending": 1056
+  },
+  "local_latency_first_event_to_queued_s": {
+    "n": 1044,
+    "p50": 3.129,
+    "p95": 3.385,
+    "max": 3.49,
+    "note": "includes the 2 s window + 1 s grace by design"
+  },
+  "ledger_chain": {
+    "ok": true,
+    "entries": 1056,
+    "first_bad_seq": null,
+    "reason": null
+  },
+  "collector_seq_gaps": 0,
+  "s1_secrets_in_raw_store_rows": {
+    "password": 1,
+    "api_key": 1,
+    "jwt": 1,
+    "aws_key": 1,
+    "email": 1,
+    "ip": 26
+  },
+  "s1_secrets_in_egress": {
+    "password": false,
+    "api_key": false,
+    "jwt": false,
+    "aws_key": false,
+    "email": false,
+    "ip": false
+  }
+}

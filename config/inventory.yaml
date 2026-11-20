@@ -1,0 +1,24 @@
+# Collector-local source inventory. LOCAL ONLY: real source IDs never leave the collector.
+# Sources are pseudonymised (src_...) before any edge or summary is queued for egress.
+# The dev simulator uses the same inventory (all sources below are SIMULATED).
+sources:
+  SRV_001: { kind: server,         timezone: Asia/Kolkata }
+  SRV_002: { kind: server,         timezone: Asia/Kolkata }
+  SRV_003: { kind: server,         timezone: Europe/Berlin }
+  SRV_004: { kind: server,         timezone: Europe/Berlin }
+  NET_001: { kind: network_device, timezone: Asia/Kolkata }
+  NET_002: { kind: network_device, timezone: Europe/Berlin }
+  APP_001: { kind: application,    timezone: Asia/Kolkata }
+  APP_002: { kind: application,    timezone: Asia/Kolkata }
+  APP_003: { kind: application,    timezone: Europe/Berlin }
+edges:
+  - { from: APP_001, to: SRV_001, relation: depends_on }
+  - { from: APP_001, to: NET_001, relation: routes_through }
+  - { from: APP_002, to: SRV_002, relation: depends_on }
+  - { from: APP_002, to: NET_001, relation: routes_through }
+  - { from: APP_003, to: SRV_003, relation: depends_on }
+  - { from: APP_003, to: NET_002, relation: routes_through }
+  - { from: SRV_001, to: NET_001, relation: routes_through }
+  - { from: SRV_002, to: NET_001, relation: routes_through }
+  - { from: SRV_003, to: NET_002, relation: routes_through }
+  - { from: SRV_004, to: NET_002, relation: routes_through }

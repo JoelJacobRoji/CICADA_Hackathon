@@ -1,0 +1,27 @@
+# AEGIS health thresholds (docs/architecture/HEALTH_AND_AIOPS.md §1.1).
+# A value strictly above `good` is no longer Excellent; above `fair` is Fair; above `poor` is Poor.
+# Used by the collector (per-window local_health) and, from Phase 5, by the SaaS health engine.
+version: 1
+numeric:
+  cpu_usage:      { good: 70,  fair: 85,  poor: 95 }
+  memory_usage:   { good: 75,  fair: 88,  poor: 95 }
+  disk_usage:     { good: 80,  fair: 90,  poor: 95 }
+  latency_ms:     { good: 100, fair: 250, poor: 500 }
+  packet_loss:    { good: 0.5, fair: 2,   poor: 10 }
+  error_rate:     { good: 1,   fair: 5,   poor: 15 }
+  # Assumes a 1 Gbps link; adjust per environment.
+  bandwidth_mbps: { good: 800, fair: 900, poor: 950 }
+binary:
+  # value 0 in any sample of the window -> Poor
+  service_up:   { poor_when_zero: true }
+  connectivity: { poor_when_zero: true }
+security:
+  auth_window_seconds: 60
+  burst_medium_failures: 5
+  burst_high_failures: 20
+  spray_min_users: 3
+  spray_min_failures: 5
+  success_after_failures_min: 5
+staleness:
+  fair_after_seconds: 10
+  poor_after_seconds: 30
