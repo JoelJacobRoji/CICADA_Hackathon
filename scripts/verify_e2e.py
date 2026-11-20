@@ -27,7 +27,19 @@ sys.path.insert(0, str(ROOT))
 from simulator.scenarios import FAKE_SECRETS  # noqa: E402
 
 TABLES = ("metric_summaries", "security_summaries", "topology_edges")
-ALL = (*TABLES, "ingest_receipts", "heartbeats", "audit_log", "collectors", "users")
+ALL = (
+    *TABLES,
+    "ingest_receipts",
+    "heartbeats",
+    "audit_log",
+    "collectors",
+    "users",
+    # Phase 6: AIOps output and everything sent to / received from the LLM
+    "alerts",
+    "incidents",
+    "notifications",
+    "llm_explanations",
+)
 
 
 def pct(v: list[float], p: float) -> float:
@@ -85,8 +97,11 @@ def main() -> None:
     lat = [(saas[p][1] - ledger[p][1]).total_seconds() for p in ledger if p in saas]
     needles = [
         *FAKE_SECRETS.values(),
-        "SRV_001",
-        "SRV_002",
+        # every real (local-only) source name in the inventory
+        *[f"SRV_00{i}" for i in range(1, 5)],
+        "NET_001",
+        "NET_002",
+        *[f"APP_00{i}" for i in range(1, 4)],
         "svc_billing",
         "Failed password",
         "TENANT_01",

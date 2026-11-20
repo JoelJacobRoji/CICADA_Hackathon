@@ -1,0 +1,302 @@
+{
+  "target": "https://aegis.162-35-42-114.sslip.io",
+  "label": "TESTED (live production)",
+  "passed": 49,
+  "total": 49,
+  "results": [
+    {
+      "id": "T1",
+      "check": "plain HTTP redirects to HTTPS",
+      "pass": true,
+      "detail": "HTTP 301"
+    },
+    {
+      "id": "T2",
+      "check": "HSTS on /",
+      "pass": true,
+      "detail": "max-age=31536000"
+    },
+    {
+      "id": "B1",
+      "check": "CSP self-only on /",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2",
+      "check": "X-Frame-Options DENY on /",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B3",
+      "check": "nosniff on /",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B4",
+      "check": "Referrer-Policy on /",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "T2",
+      "check": "HSTS on /api/v1/health/summary",
+      "pass": true,
+      "detail": "max-age=31536000"
+    },
+    {
+      "id": "B1",
+      "check": "CSP self-only on /api/v1/health/summary",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2",
+      "check": "X-Frame-Options DENY on /api/v1/health/summary",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B3",
+      "check": "nosniff on /api/v1/health/summary",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B4",
+      "check": "Referrer-Policy on /api/v1/health/summary",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A1",
+      "check": "unauthenticated /api/v1/incidents -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A1",
+      "check": "unauthenticated /api/v1/metrics -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A1",
+      "check": "unauthenticated /api/v1/health/summary -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A1",
+      "check": "unauthenticated /api/v1/aiops/summary -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A1",
+      "check": "unauthenticated /api/v1/security-events -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A2",
+      "check": "wrong password and unknown user give identical errors (no enumeration)",
+      "pass": true,
+      "detail": "401/401"
+    },
+    {
+      "id": "A3",
+      "check": "login rate limit (5/min per email+IP) returns 429",
+      "pass": true,
+      "detail": "[401, 401, 401, 401, 401, 429, 429]"
+    },
+    {
+      "id": "A4",
+      "check": "operator login succeeds",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A5",
+      "check": "session cookie is HttpOnly + Secure + SameSite=Strict",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A6",
+      "check": "session token not returned in the response body",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I0",
+      "check": "acme operator sees its incidents",
+      "pass": true,
+      "detail": "5 incidents"
+    },
+    {
+      "id": "I1",
+      "check": "initech sees none of acme's incidents",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I2",
+      "check": "initech GET acme incident -> 404 (no existence leak)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I3",
+      "check": "initech cannot acknowledge acme incident",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I4",
+      "check": "initech metrics contain no acme collector",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "W1",
+      "check": "WebSocket with a foreign Origin is rejected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "W2",
+      "check": "WebSocket with own Origin + session works (tenant from session)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "W3",
+      "check": "WebSocket without a session is rejected",
+      "pass": true,
+      "detail": "InvalidStatus"
+    },
+    {
+      "id": "C1",
+      "check": "collector endpoint without token -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "C2",
+      "check": "collector endpoint with a forged token -> 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "C3",
+      "check": "acme token works in its own region",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R1",
+      "check": "acme (Mumbai) token rejected in eu-west (residency)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R2",
+      "check": "globex (Frankfurt) token rejected in ap-south (residency)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "C4",
+      "check": "collector token cannot read operator APIs",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S1",
+      "check": "dashboard bundle contains no keys, tokens or DB URLs",
+      "pass": true,
+      "detail": "710938 bytes scanned"
+    },
+    {
+      "id": "D1",
+      "check": "ap-south: row-level security on every aegis table",
+      "pass": true,
+      "detail": "without RLS: []"
+    },
+    {
+      "id": "D2",
+      "check": "ap-south: app role cannot bypass RLS and is not superuser",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D3",
+      "check": "ap-south: no table grants to anon/authenticated/PUBLIC",
+      "pass": true,
+      "detail": "0 grants"
+    },
+    {
+      "id": "D4",
+      "check": "ap-south: app cannot delete audit log / incident history",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D5",
+      "check": "ap-south: collector tokens stored only as SHA-256",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D6",
+      "check": "ap-south: passwords stored only as argon2id",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D1",
+      "check": "eu-west: row-level security on every aegis table",
+      "pass": true,
+      "detail": "without RLS: []"
+    },
+    {
+      "id": "D2",
+      "check": "eu-west: app role cannot bypass RLS and is not superuser",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D3",
+      "check": "eu-west: no table grants to anon/authenticated/PUBLIC",
+      "pass": true,
+      "detail": "0 grants"
+    },
+    {
+      "id": "D4",
+      "check": "eu-west: app cannot delete audit log / incident history",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D5",
+      "check": "eu-west: collector tokens stored only as SHA-256",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D6",
+      "check": "eu-west: passwords stored only as argon2id",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3",
+      "check": "eu-west: no incident was ever sent to the external LLM",
+      "pass": true,
+      "detail": "11 eu-west explanation records, 0 sent"
+    }
+  ]
+}

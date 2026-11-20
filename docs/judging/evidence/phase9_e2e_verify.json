@@ -1,0 +1,71 @@
+{
+  "data_source": "SIMULATED (AEGIS dev simulator), live services, Supabase ap-south",
+  "collector_id": "col_acme_01",
+  "ledger_payloads": 3231,
+  "stored_in_saas": 3231,
+  "saas_rows_for_collector_all_runs": 24927,
+  "missing_in_saas": 0,
+  "sha256_mismatches": 0,
+  "delivery_latency_ledger_to_saas_s": {
+    "n": 3231,
+    "p50": 0.211,
+    "p95": 1.264,
+    "max": 2.986
+  },
+  "leaks_in_saas_tables": [],
+  "operator_api": {
+    "acme": {
+      "metrics_visible": 4640,
+      "collectors_of_others_visible": [],
+      "collectors": [
+        [
+          "col_acme_01",
+          "online"
+        ]
+      ],
+      "security_events": [
+        [
+          "AUTH_FAILURE_BURST",
+          "high",
+          20
+        ],
+        [
+          "AUTH_FAILURE_BURST",
+          "medium",
+          5
+        ],
+        [
+          "AUTH_FAILURE_BURST",
+          "high",
+          20
+        ],
+        [
+          "AUTH_FAILURE_BURST",
+          "medium",
+          5
+        ],
+        [
+          "AUTH_FAILURE_BURST",
+          "high",
+          20
+        ],
+        [
+          "AUTH_FAILURE_BURST",
+          "medium",
+          5
+        ]
+      ]
+    },
+    "initech": {
+      "metrics_visible": 0,
+      "collectors_of_others_visible": [],
+      "collectors": [
+        [
+          "col_initech_01",
+          "offline"
+        ]
+      ],
+      "security_events": []
+    }
+  }
+}

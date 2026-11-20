@@ -33,6 +33,7 @@ ignore = ["S101"]  # assert is fine in tests
 "apps/saas-api/src/saas_api/aiops/playbook.py" = ["E501"]  # operator-facing prose strings
 "apps/saas-api/alembic/**" = ["S608", "E501"]  # SQL DDL kept on one line for readability
 "scripts/verify_e2e.py" = ["S608", "E501"]  # fixed table-name constants; read-only evidence script
+"scripts/validate_security.py" = ["E501"]  # long SQL/check strings; read-mostly evidence script
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib -q"

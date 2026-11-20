@@ -1,5 +1,5 @@
 # AEGIS — Privacy-First Autonomous Intelligence & Observability
-*CICADA 2026 · Judging Phase 1 one-pager*
+*CICADA 2026 · one-pager (updated 2026-11-20 with validated results)*
 
 **Problem:** Central monitoring usually means shipping raw logs, payloads and credentials off-site. That widens the attack surface and breaks compliance. Operators also drown in duplicate threshold alerts.
 
@@ -27,8 +27,20 @@ flowchart LR
 
 **MVP demo:** a fake secret in a raw log → visible on the collector, absent from the SaaS (grep-verified, hash-matched egress proof) → a CPU baseline deviation flagged with its evidence → related network alerts merged into one incident with a recommendation → SaaS outage → buffered → recovered with 0 missing / 0 duplicate IDs.
 
-**Telemetry plan:** schema-compatible dev simulator (clearly labelled) plus a local system agent and JSONL replay. The official stream gets an adapter when it is supplied.
+**Telemetry plan:** the organizers provide no dataset, so the schema-compatible AEGIS simulator (labelled SYNTHETIC on every page) is the official source, with scenario injection (S1–S6). A real local system agent (psutil + TCP probes) and JSONL replay are also available.
 
 **Global-ready:** regional ingest endpoint, tenant pinned to a regional database, UTC + IANA timezone, event-time ordering, idempotent payload IDs.
 
 **Team (4):** A Collector & Privacy · B SaaS & Reliability · C Dashboard & UX · D AIOps, QA & Pitch.
+
+## Validated results (live production, 2026-11-20 · details: `docs/VALIDATION_REPORT.md`)
+
+| Promise | Measured |
+|---|---|
+| Raw data stays local | **0 leaks** of fake secrets / real source names across every SaaS table (incl. incidents and LLM prompts) |
+| Egress proof | collector ledger SHA-256 == SaaS SHA-256 for **3,231 / 3,231** payloads |
+| Explainable AIOps | CPU change caught below the static threshold (z ≈ 30); trend warning 30 s early; **18 alerts → 1 incident** with probable cause and cited playbook; grounded Gemini explanation; 0 false incidents in 100 clean minutes |
+| Reliability | SaaS outage + collector restart: **1,837 / 1,837** delivered, 0 missing, 0 duplicate IDs |
+| Real-time | event → cloud p95 5.2 s · breach → alert p95 5.7 s · offline detected ≤ 36 s |
+| Security | **49 / 49** live checks (TLS/HSTS, argon2id, rate limit, httpOnly SameSite=Strict, RLS everywhere, regional tokens, CSP) |
+| Functional | live browser suite **11 / 11**; 226 Python tests ×2 + 22 web tests |

@@ -1,0 +1,53 @@
+{
+  "label": "TESTED (live: collector-side SaaS outage, production untouched)",
+  "method": "collector pointed at an unreachable address for 60 s of telemetry, restarted on the same SQLite outbox, then reconnected to the production SaaS",
+  "timeline": [
+    {
+      "t": 36,
+      "label": "connected",
+      "sender": "ok",
+      "outbox": {
+        "delivered": 416,
+        "pending": 29,
+        "sending": 29
+      }
+    },
+    {
+      "t": 101,
+      "label": "SaaS unreachable: buffering",
+      "sender": "network_error",
+      "outbox": {
+        "delivered": 416,
+        "pending": 713,
+        "sending": 244
+      }
+    },
+    {
+      "t": 103,
+      "label": "reconnected (after collector restart)",
+      "sender": "ok",
+      "outbox": {
+        "delivered": 416,
+        "pending": 542,
+        "sending": 415
+      }
+    },
+    {
+      "t": 137,
+      "label": "draining",
+      "sender": "ok",
+      "outbox": {
+        "delivered": 1771,
+        "sending": 66
+      }
+    },
+    {
+      "t": 140,
+      "label": "draining",
+      "sender": "ok",
+      "outbox": {
+        "delivered": 1837
+      }
+    }
+  ]
+}

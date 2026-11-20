@@ -1,30 +1,61 @@
 # AEGIS: Privacy-First Autonomous Intelligence & Observability
 
-CICADA 2026 · Secure AIOps observability. A two-tier design: a **local collector** keeps raw telemetry inside the customer environment, and a **multi-tenant SaaS** receives allow-listed metadata only.
+CICADA 2026 · Secure AIOps observability. A two-tier design: a **local collector** keeps raw telemetry inside the
+customer environment, and a **multi-tenant SaaS** receives allow-listed, pseudonymous metadata only. It turns that metadata into
+four-state health, correlated incidents and grounded AI explanations.
 
-> Status: **Phase 2 (foundation)**. The services start and are tested. No observability features exist yet. See `docs/PROJECT_STATE.md`.
+**Live:** https://aegis.162-35-42-114.sslip.io · **Data:** SYNTHETIC, from the AEGIS simulator (the organizers provide no
+dataset, so it is the official source).
+
+> Status: Phases 1–6 and 9 complete and deployed; Phase 10 materials ready. Phases 7–8 extras deferred.
+> Validation: `docs/VALIDATION_REPORT.md`. Demo: `docs/DEMO_SCRIPT.md`. Judge Q&A: `docs/judging/QA.md`.
+
+## What it does (all verified live)
+- **Privacy:**
+  - raw logs, secrets and real names stay on the collector
+  - **0 leaks** across all SaaS tables
+  - collector ledger SHA-256 equals what the SaaS stored, for **3,231 / 3,231** payloads
+- **AI engine:**
+  - robust baselines (caught a CPU change the static threshold missed: z ≈ 30)
+  - trend early warning (30 s before the threshold breaks)
+  - dependency-aware correlation (**18 alerts → 1 incident**) with probable cause and a cited playbook
+  - Gemini explanations that must pass a grounding check
+  - 0 false incidents in 100 clean minutes
+- **Device alerts:** incidents are pulled by the collector over its outbound connection, re-identified locally, and delivered to a local webhook.
+- **Security:** 49/49 live checks:
+  - TLS and HSTS
+  - argon2id passwords and rate-limited login
+  - httpOnly SameSite=Strict sessions
+  - row-level security per tenant
+  - regional tokens (EU tenants never sent to the LLM)
+  - strict CSP
+- **Reliability and speed:**
+  - after a SaaS outage, **1,837 / 1,837** delivered with 0 lost and 0 duplicated
+  - p95 event → cloud 5.2 s; breach → alert 5.7 s; offline detected in ≤ 36 s
 
 ## Layout
 ```text
-apps/collector     Tier 1 local collector (FastAPI + SQLite WAL). Binds to loopback only.
-apps/saas-api      Tier 2 SaaS API (FastAPI + Postgres with RLS; Supabase at runtime)
-apps/web           Operator UI (React + TS + Vite + Tailwind)
-packages/contracts Shared Pydantic contracts. outbound.py is the egress allow-list.
-tests/architecture Tier-boundary tests
-infra/             DB init scripts (later: deploy)
-scripts/           dev.ps1, check.ps1, migrate.ps1, gen-secrets.py
-docs/              Requirements, architecture, security, judging evidence
+apps/collector     Tier 1 local collector (FastAPI + SQLite WAL), loopback only: pipeline, privacy, ledger, sender, device alerts
+apps/saas-api      Tier 2 SaaS (FastAPI + PostgreSQL/Supabase with RLS): ingest, health, AIOps, LLM, incidents, WebSocket
+apps/web           Operator dashboard (React + TS + Vite + Tailwind)
+packages/contracts Shared Pydantic contracts; outbound.py is the egress allow-list
+simulator/         Synthetic telemetry + scenarios S1, S3, S4, S5, S6 (NAME@SECONDS scheduling)
+config/            health_thresholds.yaml, aiops.yaml, inventory.yaml
+tests/             architecture (tier boundaries, runtime deps) and system (real pipeline -> AIOps) tests
+infra/vps/         systemd + nginx + installer for the VPS
+scripts/           check.ps1, demo.ps1, e2e_live.py, verify_e2e.py, validate_security.py, release-web.ps1, ...
+docs/              requirements, architecture, security, decisions, test results, judging evidence
 ```
 
 ## Quick start (Windows PowerShell)
 ```powershell
 uv run python scripts/gen-secrets.py   # writes git-ignored .env files; prints no secrets
-./scripts/dev.ps1                      # Postgres (docker) + migrations + 3 services
-./scripts/check.ps1                    # lint, types, tests, build, secrets guard
+./scripts/check.ps1                    # lint, types, 226 Python tests x2 (normal + CI parity), web tests, build
+./scripts/demo.ps1                     # live demo: device webhook + collector (-> deployed SaaS) + timed scenarios
 ```
-To use Supabase, see `docs/runbooks/DEV_SETUP.md` §3. Then run `./scripts/dev.ps1 -NoDb` after `./scripts/migrate.ps1`.
+Local development stack: `./scripts/dev.ps1` (see `docs/runbooks/DEV_SETUP.md`). VPS operations: `docs/runbooks/VPS_DEPLOY.md`.
 
 ## Ports
-SaaS 9001 · Collector 9100 (loopback) · Web 5180 · local Postgres 55432 (loopback).
+SaaS 9001 · Collector 9100 (loopback) · demo webhook 9200 (loopback) · Web 5180 · local Postgres 55432 (loopback).
 
-> ⚠️ This folder is inside OneDrive. **Keep sync paused.** Syncing can corrupt the collector's SQLite files. Alternatively, set `AEGIS_COL_DB_PATH` to a path outside OneDrive.
+> ⚠️ This folder is inside OneDrive. **Keep sync paused**: syncing can corrupt the collector's SQLite files.

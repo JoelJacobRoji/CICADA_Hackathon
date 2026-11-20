@@ -1,0 +1,39 @@
+{
+  "label": "TESTED (live production, timestamps from Supabase)",
+  "T1_raw_event_to_saas_s": {
+    "n": 13079,
+    "p50": 3.37,
+    "p95": 5.22,
+    "max": 13.21,
+    "window_end_to_saas_p95": 3.37,
+    "note": "first raw event in the 2 s window -> SaaS received_at (WS publish follows in-process); browser render not instrumented"
+  },
+  "T2_breach_to_alert_s": {
+    "n": 25,
+    "p50": 4.76,
+    "p95": 5.69,
+    "max": 5.69,
+    "by_family_max": {
+      "SECURITY": 2.45,
+      "BASELINE": 5.69,
+      "TREND": 5.69,
+      "THRESHOLD": 5.69
+    },
+    "note": "start of first breaching event window -> alert created (server). SECURITY uses its 20 s detection window end"
+  },
+  "T3_last_heartbeat_to_offline_s": {
+    "n": 9,
+    "values": [
+      33.6,
+      34.0,
+      33.4,
+      34.9,
+      35.7,
+      35.3,
+      33.4,
+      33.7,
+      34.4
+    ],
+    "max": 35.7
+  }
+}

@@ -62,6 +62,16 @@ Timeline after `demo.ps1` starts (verified end-to-end in the simulated harness: 
 - Optional, as the closing beat: close the **collector** window. Within about 35 s the fleet shows the
   collector **Poor (offline)** and a "Collector offline" incident opens, with no reload.
 
+## 5. If judges inject "collector loses SaaS connectivity" (§8, S2)
+1. Turn **Wi-Fi off** on the laptop for 30–60 s. The simulator and collector keep running locally.
+2. In the collector window or `http://127.0.0.1:9100/docs` → `/local/stats` (local admin token), the
+   sender shows `network_error` and the outbox `pending` count grows.
+3. The dashboard is unreachable from this laptop while it's offline. Use a phone, or say so. On the dashboard
+   from another device, the collector goes Poor (offline) after ~35 s.
+4. Turn Wi-Fi back on. `pending` drains to 0 within about a minute; the fleet returns to online.
+5. Proof of no loss and no duplicates: `phase9_outage_verify.json` (1,837/1,837, 0 missing, 0 duplicate IDs).
+   It was measured the same way, with the collector unable to reach the SaaS and then reconnecting.
+
 ## Fallbacks
 | Problem | Do this |
 |---|---|

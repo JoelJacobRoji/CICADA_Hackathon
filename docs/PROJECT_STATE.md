@@ -1,6 +1,6 @@
 # AEGIS — Project State
 
-- **Current phase:** 6 (AIOps + device alerts + Gemini explanations): complete and deployed, awaiting user review
+- **Current phase:** 9 (validation) and 10 (demo/pitch) complete; awaiting user review. Phase 6 deployed (f8f1920)
 - **Last approved phase:** 6 (approved 2026-11-20). **Phases 7-8 deferred by user decision** (implement after the 2026-11-21 09:00 evaluation); next: demo/validation (9-10) on request
 - **Evaluation:** 2026-11-21 09:00 - criteria: functional product, two-tier (frontend + backend + DB), AI engine, security. Demo: `scripts/demo.ps1` + `docs/DEMO_SCRIPT.md`
 - **Git / deployed:** origin/main f8f1920 = backend AND dashboard on the VPS (build.txt). Live e2e 11/11 on f8f1920. **The user commits and pushes; never commit/push without being told.**
