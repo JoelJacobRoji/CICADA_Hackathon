@@ -42,3 +42,8 @@ ssh incendium 'systemctl status aegis-saas --no-pager; journalctl -u aegis-saas 
 curl -s https://aegis.162-35-42-114.sslip.io/readyz
 ```
 The collector points at the VPS via `AEGIS_COL_SAAS_BASE_URL=https://aegis.162-35-42-114.sslip.io` in `apps/collector/.env`.
+
+## Dashboard (Phase 5)
+- Static build served from `/var/www/aegis-web` (atomic swap; previous build kept as `/var/www/aegis-web.old`).
+- Release from a clean, pushed commit: `./scripts/release-web.ps1` (writes `build.txt`; check `https://aegis.162-35-42-114.sslip.io/build.txt`).
+- nginx: `/` serves the SPA (no-cache), `/assets/` cached 1 y, `/api/*`, `/api/v1/ws`, `/healthz`, `/readyz` proxied to `127.0.0.1:9001`. CSP, HSTS, nosniff, X-Frame-Options and Referrer-Policy on every response.

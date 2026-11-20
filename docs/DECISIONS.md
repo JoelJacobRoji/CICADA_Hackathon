@@ -41,3 +41,7 @@
 | ADR-37 | 2026-11-20 | Collector-auth positive cache, TTL 30 s (revocation window documented) | per-request lookup | removes the identity round trip from the hot path | Accepted |
 | ADR-38 | 2026-11-20 | Health engine in-process (single API instance), write-behind persistence (~1 s), sweeper every 5 s, state restored at startup | DB-computed health | zero extra round trips on ingest; consistent with in-process WS hub (K18) | Accepted |
 | ADR-39 | 2026-11-20 | Staleness and security are overlays on the hysteresis-controlled base state; staleness clears immediately when data returns | staleness inside hysteresis | a returning source shouldn't wait 30 s to stop looking stale | Accepted |
+| ADR-40 | 2026-11-20 | Dashboard served same-origin by nginx (static build) with /api + WS proxied; CSP restricts scripts/connect to self | separate UI host | no CORS, simple httpOnly cookie, strict CSP | Accepted |
+| ADR-41 | 2026-11-20 | Charts: small multiples, single validated series colour, thresholds as labelled hairlines, broken lines across data gaps, no redraw animation; states always icon + label | multi-series overlays | honest, accessible, CVD-safe (dataviz validator) | Accepted |
+| ADR-42 | 2026-11-20 | WS and REST share one timestamp format (ISO-8601 UTC 'Z') | client-side parsing tolerance only | contract consistency; regression-tested | Accepted |
+| ADR-43 | 2026-11-20 | Dashboard releases are built only from a clean, pushed commit and carry build.txt | build from working tree | every deployed UI is traceable to a commit | Accepted |

@@ -28,3 +28,6 @@
 | K24 | Collector tests read the developer's .env (real token + VPS URL) and sent test data to production (since 4b) | Production pollution (metadata only, simulated) | Fixed fixture isolation (asserted); 537 polluted rows deleted precisely | RESOLVED |
 | K25 | Collector shutdown use-after-close segfault on Windows (sender thread vs conn.close) | Process crash at shutdown; masked by piped exit codes | sender.stop() + close under pipeline lock; always check real exit codes / JUnit | RESOLVED |
 | K26 | Health hysteresis counters are not persisted (state is) | After an API restart, a pending degrade/recovery restarts its window count | Acceptable; restored state preserved | ACCEPTED |
+| K27 | Sign-out deletes the session cookie but the stateless JWT stays valid until expiry (30 min) if copied elsewhere | Stolen-cookie window | Production: server-side session revocation list or short TTL + refresh | ACCEPTED |
+| K28 | Local dashboard preview via Vite proxy to the VPS fails (Secure cookie over plain HTTP) | Dev convenience only | Use local SaaS for dev, or verify on the VPS | ACCEPTED |
+| K29 | Settings page states the engine's hysteresis/offline constants as text (not read from the API) | Could drift if constants change | Expose engine constants via /settings (Phase 6 cleanup) | OPEN |

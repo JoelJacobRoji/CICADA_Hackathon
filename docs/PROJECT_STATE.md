@@ -1,9 +1,9 @@
 # AEGIS — Project State
 
-- **Current phase:** 4b (VPS deployment): complete, awaiting user review
-- **Last approved phase:** 4b (approved 2026-11-20)
-- **Next gate:** Phase 5 pre-phase checkpoint (latency fix K22 proposed first)
-- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phases 1-3 + CI fix pushed (HEAD 82584c9, CI green 2026-11-20). Phase 4 pushed as ee93a35 (CI green). Phase 4b files UNCOMMITTED. **Do not commit/push until the user says so.**
+- **Current phase:** 5 (Dashboard + health engine + K22): complete, awaiting user review
+- **Last approved phase:** 5 (approved 2026-11-20)
+- **Next gate:** Phase 6 (AIOps) pre-phase checkpoint
+- **Git:** repo `JoelJacobRoji/CICADA_Hackathon` (origin/main = Phase 1 docs). Phases 1-3 + CI fix pushed (HEAD 82584c9, CI green 2026-11-20). HEAD 39cd0d6 (CI green). Deployed: backend ea35e09 (unchanged since), dashboard 39cd0d6. Phase 5 docs + screenshots UNCOMMITTED. **Do not commit/push until the user says so.**
 - **Database:** Supabase (ADR-18, Free plan) at runtime: `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), migration 0001 applied and verified 2026-11-20. Local docker `aegis-pg` (127.0.0.1:55432) used by automated tests only.
 - **Hackathon clock:** started ≈ 1 h before Phase 1 began on 2026-11-20
 - **Product code:** contracts; SaaS skeleton (+RLS); collector pipeline complete up to the outbox (adapters, scrubber, pseudonyms, 2 s windows, local health, auth detector, canary + fingerprints, hash-chained ledger, local console API, retention); dev simulator with S1/S3/S4/S5/S6. No sender, no ingest, no UI yet.
@@ -35,3 +35,8 @@ Operator passwords: `apps/saas-api/.demo-operators.local` (git-ignored; latest l
 - SaaS live at `https://aegis.162-35-42-114.sslip.io` (VPS 162.35.42.114, US; systemd `aegis-saas`; nginx site `aegis`; LE cert `aegis`), commit ee93a35. Runbook: `docs/runbooks/VPS_DEPLOY.md`.
 - Laptop collector `AEGIS_COL_SAAS_BASE_URL` now points at the VPS.
 - The other VPS app is untouched (verified before/after).
+
+## Dashboard (Phase 5)
+- `https://aegis.162-35-42-114.sslip.io/` - sign in with a demo operator from `apps/saas-api/.demo-operators.local`.
+- Release: `./scripts/release-web.ps1` (clean tree required; writes build.txt). Backend: `install.sh runtime <commit>` + `service`.
+- Live e2e: `uv run python scripts/e2e_live.py` (starts collector + simulator, stops collector for the offline check).
