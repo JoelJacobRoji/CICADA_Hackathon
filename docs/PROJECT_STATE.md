@@ -3,7 +3,7 @@
 - **Current phase:** 8 partial: Privacy Glass (M3) done and deployed (24cbdce, 2026-11-21); 9 and 10 complete
 - **Last approved phase:** 6 (approved 2026-11-20). **Phase 8 Privacy Glass approved and built 2026-11-21; other Phase 7-8 items deferred by user decision** (implement after the 2026-11-21 09:00 evaluation); next: demo/validation (9-10) on request
 - **Evaluation:** 2026-11-21 09:00 - criteria: functional product, two-tier (frontend + backend + DB), AI engine, security. Demo: `scripts/demo.ps1` + `docs/DEMO_SCRIPT.md`
-- **Git / deployed:** backend 24cbdce + dashboard bec7b74 (real-host banner) on the VPS (build.txt). Live e2e 11/11 on 24cbdce (2026-11-21; an earlier run was invalid because a demo session held port 9100). **The user commits and pushes; never commit/push without being told.**
+- **Git / deployed:** backend + dashboard 3f43a73 on the VPS (build.txt): quick-win UI (ADR-55), K36 fix (ADR-56/57). Live e2e 12/12. Live e2e 11/11 on 24cbdce (2026-11-21; an earlier run was invalid because a demo session held port 9100). **The user commits and pushes; never commit/push without being told.**
 - **Database:** Supabase (ADR-18, Free plan): `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), both at migration 0005 (verified: RLS + policies on all tenant tables, aegis_app no DELETE). Local docker `aegis-pg` (127.0.0.1:55432) for automated tests only.
 - **Real data:** system agent ON in apps/collector/.env since 2026-11-21 (ADR-54): the laptop is a REAL 10th source (`HOST_<hostname>`, pseudonymised); verified offline and live (`phase8_system_agent_live.json`). Risks K34/K35.
 - **LLM:** Gemini (free tier) key in apps/saas-api/.env and VPS /etc/aegis/saas.env (root:aegis 0640); enabled for ap-south only (eu-west disabled: residency)
