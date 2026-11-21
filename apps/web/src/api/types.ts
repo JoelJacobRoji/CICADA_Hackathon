@@ -246,5 +246,6 @@ export interface AiopsSummary {
   alerts_total: number
   alert_signals_total: number
   noise_reduction_ratio: number | null
+  since?: string
   definition: string
 }

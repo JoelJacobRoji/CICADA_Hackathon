@@ -366,3 +366,25 @@ def test_collector_outage_groups_no_data_and_keeps_real_root_cause(eng, clk):
     assert {a.entity_id for a in nodata} == {NET, APP1, SRV}
     assert outage.title == "Collector col_t_01 offline"
     assert "C-COLLECTOR" in {c["rule"] for c in outage.correlation}
+
+
+def test_summary_from_engine_memory_counts_open_and_signals(eng, clk):
+    """K36: the dashboard summary comes from engine memory (no database), per tenant."""
+    feed(eng, clk, SRV, "cpu_usage", noisy(35, 2, 40) + [97.0] * 10)
+    (inc,) = incidents(eng)
+    s = eng.summary(TENANT)
+    assert s["open_by_priority"][inc.priority] == 1 and sum(s["open_by_priority"].values()) == 1
+    assert s["incidents_total"] == 1
+    signals = sum(a.occurrences for a in eng._alerts_of(inc))
+    assert s["alerts_total"] == len(eng._alerts_of(inc))
+    assert s["alert_signals_total"] == signals >= 8
+    assert s["noise_reduction_ratio"] == round(signals / 1, 1)
+    assert s["since"] == T0.isoformat()  # engine start time: totals are since then
+    # resolved incidents leave the open counts but stay in the totals
+    clk.now += timedelta(seconds=121)
+    eng.sweep()
+    s2 = eng.summary(TENANT)
+    assert sum(s2["open_by_priority"].values()) == 0 and s2["incidents_total"] == 1
+    # another tenant sees nothing of this one
+    other = eng.summary(uuid.uuid4())
+    assert other["incidents_total"] == 0 and other["noise_reduction_ratio"] is None

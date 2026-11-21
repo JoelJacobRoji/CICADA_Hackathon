@@ -68,7 +68,8 @@ export function Overview() {
           to="/incidents" alert={!!a?.open_by_priority.P1} />
         <Kpi visual={<span className="kpi-badge" aria-hidden="true">÷</span>} label="Alert noise reduction"
           value={a?.noise_reduction_ratio ? `${a.noise_reduction_ratio} : 1` : '—'}
-          sub={a ? `${a.alert_signals_total} alert signals → ${a.incidents_total} incidents` : 'loading'} />
+          sub={a ? `${a.alert_signals_total} alert signals → ${a.incidents_total} incidents${
+            a.since ? ` since ${a.since.slice(11, 16)} UTC` : ''}` : 'loading'} />
       </section>
 
       <section className="hero card">

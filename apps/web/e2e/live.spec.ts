@@ -25,6 +25,19 @@ test('@live security headers are served on the dashboard', async ({ request }) =
   expect(await r.text()).toContain('<div id="root">')
 })
 
+test('@live K36: incident figures (KPI cards + header pill) load within 5 s', async ({ page }) => {
+  const t0 = Date.now()
+  const resp = page.waitForResponse((r) => r.url().includes('/api/v1/aiops/summary'), { timeout: 30_000 })
+  await page.goto('/')
+  const r = await resp
+  const apiMs = Date.now() - t0
+  await expect(page.getByText(/^P1 \d+ · P2 \d+ · P3 \d+$/)).toBeVisible({ timeout: 30_000 })
+  const cardMs = Date.now() - t0
+  console.log(`K36 timing: first /aiops/summary response ${apiMs} ms (HTTP ${r.status()}), KPI card filled ${cardMs} ms`)
+  expect(r.status()).toBe(200)
+  expect(cardMs).toBeLessThan(5_000)
+})
+
 test('@live sign in -> overview shows real health from the API, live connection', async ({ page }) => {
   await signIn(page)
   await expect(page.getByRole('status').filter({ hasText: 'Live' })).toBeVisible()

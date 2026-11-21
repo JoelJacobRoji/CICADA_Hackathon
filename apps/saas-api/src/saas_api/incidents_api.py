@@ -140,29 +140,8 @@ def build_router() -> APIRouter:
 
     @r.get("/api/v1/aiops/summary")
     def summary(op: Operator = Depends(current_operator)) -> dict[str, Any]:
-        aiops.store.flush()
-        with tenant_connection(op.region, op.tenant_id) as c:
-            counts = dict(
-                c.execute(
-                    select(incidents_t.c.priority, func.count())
-                    .where(incidents_t.c.status == "open")
-                    .group_by(incidents_t.c.priority)
-                ).all()
-            )
-            total = c.execute(select(func.count()).select_from(incidents_t)).scalar_one()
-            alerts = c.execute(
-                select(
-                    func.count(), func.coalesce(func.sum(alerts_t.c.occurrences), 0)
-                ).select_from(alerts_t)
-            ).one()
-        return {
-            "open_by_priority": {p: counts.get(p, 0) for p in ("P1", "P2", "P3")},
-            "incidents_total": total,
-            "alerts_total": alerts[0],
-            "alert_signals_total": int(alerts[1]),
-            "noise_reduction_ratio": round(int(alerts[1]) / total, 1) if total else None,
-            "definition": "alert signals (incl. deduplicated repeats) per incident",
-        }
+        # From engine memory: no flush, no database round trips (K36: was ~6 s live).
+        return aiops.engine().summary(op.tenant_id)
 
     @r.get("/api/v1/notifications/stats")
     def notification_stats(op: Operator = Depends(current_operator)) -> list[dict[str, Any]]:

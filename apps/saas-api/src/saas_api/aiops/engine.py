@@ -187,6 +187,7 @@ class AiopsEngine:
         self.transients: dict[uuid.UUID, int] = {}
         self.raw_alert_count: dict[uuid.UUID, int] = {}
         self.lock = threading.RLock()
+        self.started_at = self.clock()
 
     # ------------------------------------------------------------------ inputs
 
@@ -693,6 +694,31 @@ class AiopsEngine:
             if inc.acked_at is None:
                 inc.acked_at, inc.acked_by = self.clock(), actor
             return inc
+
+    def summary(self, tenant: uuid.UUID) -> dict[str, Any]:
+        """Dashboard key figures from engine memory (authoritative and newest; no database round
+        trips, K36). Totals cover the period since this engine started (`since`)."""
+        with self.lock:
+            open_by = {"P1": 0, "P2": 0, "P3": 0}
+            total = 0
+            for i in self.incidents.values():
+                if i.tenant_id != tenant:
+                    continue
+                total += 1
+                if i.status == "open":
+                    open_by[i.priority] = open_by.get(i.priority, 0) + 1
+            alerts = [a for a in self.alerts.values() if a.tenant_id == tenant]
+            signals = sum(a.occurrences for a in alerts)
+            return {
+                "open_by_priority": open_by,
+                "incidents_total": total,
+                "alerts_total": len(alerts),
+                "alert_signals_total": signals,
+                "noise_reduction_ratio": round(signals / total, 1) if total else None,
+                "since": self.started_at.isoformat(),
+                "definition": "alert signals (incl. deduplicated repeats) per incident, since the "
+                "AIOps engine started",
+            }
 
     def noise(self, tenant: uuid.UUID) -> dict[str, Any]:
         with self.lock:

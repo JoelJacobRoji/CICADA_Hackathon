@@ -115,7 +115,7 @@ describe('Overview key figures (KPI cards)', () => {
       '/api/v1/health/transitions': [],
       '/api/v1/incidents': [],
       '/api/v1/aiops/summary': { open_by_priority: { P1: 1, P2: 2, P3: 0 }, incidents_total: 4, alerts_total: 40,
-        alert_signals_total: 72, noise_reduction_ratio: 18, definition: '' },
+        alert_signals_total: 72, noise_reduction_ratio: 18, since: '2026-11-21T04:20:00+00:00', definition: '' },
     })
     const { container } = render(<MemoryRouter><Overview /></MemoryRouter>)
     expect(await screen.findByText('P1 1 · P2 2 · P3 0')).toBeInTheDocument()
@@ -124,7 +124,7 @@ describe('Overview key figures (KPI cards)', () => {
     expect(screen.getByText('1/2')).toBeInTheDocument() // collectors online
     expect(screen.getByText('1 offline or failing')).toBeInTheDocument()
     expect(screen.getByText('18 : 1')).toBeInTheDocument()
-    expect(screen.getByText('72 alert signals → 4 incidents')).toBeInTheDocument()
+    expect(screen.getByText('72 alert signals → 4 incidents since 04:20 UTC')).toBeInTheDocument()
     // Rings are decorative (the value is always text) and never counted as charts.
     expect(container.querySelectorAll('.ring svg[aria-hidden="true"]').length).toBe(2)
     expect(container.querySelectorAll('.kpis [role="img"]').length).toBe(0)
