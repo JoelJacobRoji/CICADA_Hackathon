@@ -1,0 +1,36 @@
+{
+  "run_at_ist": "2026-11-21 ~07:25",
+  "target": "production SaaS (24cbdce) via the laptop collector (apps/collector/.env, system agent ON, scratch DB, agent only)",
+  "data": "REAL host metrics (psutil + TCP probes to 1.1.1.1:443 and 8.8.8.8:443)",
+  "steps": [
+    "90 s learning",
+    "30 s genuine CPU load on all 12 cores",
+    "60 s recovery"
+  ],
+  "results": {
+    "agent_samples_accepted": 587,
+    "sender_state": "ok",
+    "glass": {
+      "local_source_name": "HOST_ASUS-VIVOBOOK",
+      "outbound_source_pid": "src_eb8bc28cf15ce0a9",
+      "receipt": "ok",
+      "hash_match": true,
+      "sensitive_values_in_outbound": 0
+    },
+    "production_incident": "Degradation on server <laptop> (cpu_usage, latency_ms)",
+    "device_alert_reidentified_locally": true
+  },
+  "offline_harness_same_day": {
+    "idle_120s_incidents": 0,
+    "load_detected_after_s": 7,
+    "baseline_z": 6.19,
+    "observed_cpu": 37.6,
+    "baseline_median_cpu": 14.65,
+    "alerts": [
+      "BASELINE_DEVIATION",
+      "CPU_USAGE_POOR",
+      "LATENCY_MS_RISING"
+    ],
+    "real_hostname_in_egress": false
+  }
+}

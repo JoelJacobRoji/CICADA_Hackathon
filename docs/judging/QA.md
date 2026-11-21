@@ -47,6 +47,12 @@ Live result: fake secrets and all 9 real source names were searched across every
 - Automatic **leak check**: every sensitive value from column 1 is searched for in column 3. A **leak scan** does the same across every ledgered payload, for every local record where a secret was found.
 - **Show:** click "Latest security summary" (S3), then "Run leak scan" (S1 secrets). Fleet-wide proof: **3,231 / 3,231** hashes equal (`phase9_e2e_verify.json`).
 
+**Is any of the data real?**
+- Yes: one source. The collector laptop runs AEGIS's **system agent**: real CPU, memory, disk, bandwidth, and TCP-probe latency, loss and connectivity every 2 s. It appears in the cloud only as a `src_…` pseudonym.
+- The other 9 sources are SYNTHETIC from our simulator, because the organizers provide no dataset and the scenarios must be reproducible.
+- Verified live: a genuine 30 s CPU load on the laptop opened a baseline incident in production within ~7 s (z = 6.19), and the device alert came back re-identified with the laptop's real name.
+- **Show:** the laptop source on the Overview / Infrastructure pages; `phase8_system_agent_live.json`.
+
 ## AIOps and operations
 
 **How do you distinguish a real anomaly from a normal usage spike?**

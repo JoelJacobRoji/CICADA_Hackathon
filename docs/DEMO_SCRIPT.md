@@ -3,8 +3,15 @@
 Dashboard: **https://aegis.162-35-42-114.sslip.io**. Sign in as the `acme` operator. The credentials are in
 `apps/saas-api/.demo-operators.local` on the presenting laptop (git-ignored). Never show that file on screen.
 
-All telemetry is **SYNTHETIC**, from the AEGIS simulator. The organizers provide no dataset, so the
-simulator is the official data source, and the banner on every page says so.
+Nine sources are **SYNTHETIC**, from the AEGIS simulator (the organizers provide no dataset, so the simulator is the
+official data source). A tenth source is **REAL**: the collector laptop itself (`HOST_ASUS-VIVOBOOK`), measured by the
+collector's system agent (CPU, memory, disk, bandwidth, TCP-probe latency and loss). The banner on every page says so.
+
+**Real data is not scripted.** Before the session close unneeded apps: the laptop's memory sits at 85–88 % and the
+Fair threshold is 88 %. A real CPU burst (or memory above 88 %) opens a real incident on the laptop source. If that
+happens, use it: open it, show the real evidence, and point out the cloud only ever saw `src_…`.
+Optional live beat: run a CPU-heavy task for ~30 s; verified live: a baseline incident in ~7 s, then the device alert
+re-identified as `HOST_ASUS-VIVOBOOK`.
 
 ## 0. Before the session (T-15 min)
 1. Laptop on the hotspot. Check `https://aegis.162-35-42-114.sslip.io/readyz` → `"status":"ready"`, both regions `ok`.
