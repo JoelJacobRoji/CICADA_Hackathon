@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { m } from 'motion/react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { AiopsSummary, AlertRow, IncidentDetail, IncidentRow, LiveEvent } from '../api/types'
 import { useApi } from '../api/useApi'
@@ -108,6 +109,12 @@ export function Incidents() {
   useLiveEvents(onEvent, isIncident)
 
   const all = list.data ?? []
+  // Rows present at first load never animate; rows that appear later (live incidents) slide in.
+  const seen = useRef<Set<string> | null>(null)
+  if (seen.current === null && list.data) seen.current = new Set(list.data.map((i) => i.id))
+  useEffect(() => {
+    if (list.data && seen.current) list.data.forEach((i) => seen.current?.add(i.id))
+  }, [list.data])
   const counts = { all: all.length, open: all.filter((i) => i.status === 'open').length,
     resolved: all.filter((i) => i.status === 'resolved').length }
   const rows = status === 'all' ? all : all.filter((i) => i.status === status)
@@ -161,8 +168,10 @@ export function Incidents() {
                   </thead>
                   <tbody>
                     {rows.map((i) => (
-                      <tr key={i.id} className={i.id === selected ? 'row-selected' : undefined}
-                        onClick={() => setPicked(i.id)}>
+                      <m.tr key={i.id} className={i.id === selected ? 'row-selected' : undefined}
+                        onClick={() => setPicked(i.id)} layout="position"
+                        initial={seen.current?.has(i.id) ? false : { opacity: 0, x: -16 }}
+                        animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
                         <td><PriorityBadge p={i.priority} /></td>
                         <td><Link to={`/incidents/${i.id}`} onClick={(e) => e.stopPropagation()}>{i.title}</Link></td>
                         <td><StatusPill status={i.status} acked={!!i.acked_at} /></td>
@@ -181,7 +190,7 @@ export function Incidents() {
                             Preview
                           </button>
                         </td>
-                      </tr>
+                      </m.tr>
                     ))}
                   </tbody>
                 </table>

@@ -4,6 +4,7 @@ import { STATES, type AiopsSummary, type HealthSummary, type IncidentRow, type L
 import { useApi } from '../api/useApi'
 import { Card, Empty, ErrorNote, Loading, Reasons, StatTile, TimeAgo } from '../components/common'
 import { Kpi, Ring, pct } from '../components/Kpi'
+import { AnimatedFraction, AnimatedNumber } from '../components/motion'
 import { PriorityBadge } from '../components/Priority'
 import { StateBadge, stateMeaning } from '../components/StateBadge'
 import { describeReason, kindLabel, shortId } from '../lib/format'
@@ -56,18 +57,18 @@ export function Overview() {
 
       <section className="kpis" aria-label="Key figures">
         <Kpi visual={<Ring share={srcShare} label={pct(srcShare)} />} label="Healthy sources"
-          value={totalSrc ? `${healthySrc}/${totalSrc}` : '—'} sub="Excellent or Good right now" to="/infrastructure" />
+          value={totalSrc ? <AnimatedFraction num={healthySrc} den={totalSrc} /> : '—'} sub="Excellent or Good right now" to="/infrastructure" />
         <Kpi visual={<Ring share={colShare} label={pct(colShare)} />} label="Collectors online"
-          value={`${colUp}/${totalCol}`}
+          value={<AnimatedFraction num={colUp} den={totalCol} />}
           sub={col.Poor ? `${col.Poor} offline or failing` : 'all reporting'} to="/fleet" alert={col.Poor > 0} />
         <Kpi
           visual={<span className={`kpi-badge${a?.open_by_priority.P1 ? ' kpi-badge-critical' : ''}`} aria-hidden="true">
             {openTotal == null ? '…' : openTotal === 0 ? '✓' : '!'}</span>}
-          label="Active incidents" value={openTotal ?? '—'}
+          label="Active incidents" value={openTotal == null ? '—' : <AnimatedNumber value={openTotal} />}
           sub={a ? `P1 ${a.open_by_priority.P1} · P2 ${a.open_by_priority.P2} · P3 ${a.open_by_priority.P3}` : 'loading'}
           to="/incidents" alert={!!a?.open_by_priority.P1} />
         <Kpi visual={<span className="kpi-badge" aria-hidden="true">÷</span>} label="Alert noise reduction"
-          value={a?.noise_reduction_ratio ? `${a.noise_reduction_ratio} : 1` : '—'}
+          value={a?.noise_reduction_ratio ? <AnimatedNumber value={a.noise_reduction_ratio} suffix=" : 1" /> : '—'}
           sub={a ? `${a.alert_signals_total} alert signals → ${a.incidents_total} incidents${
             a.since ? ` since ${a.since.slice(11, 16)} UTC` : ''}` : 'loading'} />
       </section>

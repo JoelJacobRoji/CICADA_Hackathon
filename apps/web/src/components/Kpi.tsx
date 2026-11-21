@@ -1,3 +1,4 @@
+import { m } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -38,7 +39,12 @@ export function Kpi({ visual, label, value, sub, to, alert = false }: {
     </>
   )
   const cls = `kpi${alert ? ' kpi-alert' : ''}`
-  return to ? <Link to={to} className={cls}>{body}</Link> : <div className={cls}>{body}</div>
+  // layout: tiles glide when their content or the grid reflows (live updates, resize)
+  return (
+    <m.div layout className="kpi-cell">
+      {to ? <Link to={to} className={cls}>{body}</Link> : <div className={cls}>{body}</div>}
+    </m.div>
+  )
 }
 
 export function pct(share: number | null): string {

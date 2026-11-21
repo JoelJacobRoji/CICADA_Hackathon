@@ -123,7 +123,7 @@ describe('Overview key figures (KPI cards)', () => {
     expect(screen.getByText('80%')).toBeInTheDocument()
     expect(screen.getByText('1/2')).toBeInTheDocument() // collectors online
     expect(screen.getByText('1 offline or failing')).toBeInTheDocument()
-    expect(screen.getByText('18 : 1')).toBeInTheDocument()
+    expect(screen.getByText('18 : 1', { selector: '.sr-only' })).toBeInTheDocument() // animated twin is aria-hidden
     expect(screen.getByText('72 alert signals → 4 incidents since 04:20 UTC')).toBeInTheDocument()
     // Rings are decorative (the value is always text) and never counted as charts.
     expect(container.querySelectorAll('.ring svg[aria-hidden="true"]').length).toBe(2)
@@ -378,5 +378,39 @@ describe('Theme', () => {
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
     applyTheme('dark')
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+})
+
+// ---------------------------------------------------------------- UI upgrade phase 2: motion + live
+describe('Live ticker', () => {
+  it('describes real events with tone + text, and never lists high-volume metric windows', async () => {
+    const { describeEvent } = await import('./components/LiveTicker')
+    const inc = describeEvent({ type: 'incident', kind: 'opened', incident_id: 'i', version: 1, priority: 'P1',
+      title: 'Network device degraded', status: 'open' })
+    expect(inc).toEqual({ text: 'P1 incident opened: Network device degraded', tone: 'bad' })
+    const tr = describeEvent({ type: 'health_transition', entity_type: 'source', entity_id: PID,
+      from_state: 'Good', to_state: 'Poor', at_utc: '', reasons: [] } as never)
+    expect(tr?.text).toBe('src_ab12cd…: Good → Poor')
+    expect(tr?.tone).toBe('bad')
+    expect(describeEvent({ type: 'metric_summary' })).toBeNull()
+    expect(describeEvent({ type: 'heartbeat', collector_id: 'col_x_01', outbox_depth: 3, sent_at: '' })?.text)
+      .toBe('Heartbeat col_x_01 · queue 3')
+  })
+  it('renders an honest empty state before any event arrives', async () => {
+    const { LiveTicker } = await import('./components/LiveTicker')
+    const { container } = render(<LiveTicker />)
+    expect(within(container).getByText('Waiting for live events…')).toBeInTheDocument()
+    await userEvent.click(within(container).getByRole('button', { name: /Recent events/ }))
+    expect(within(container).getByRole('region', { name: 'Recent live events' })).toHaveTextContent('No events yet.')
+  })
+})
+
+describe('Animated numbers', () => {
+  it('always expose the plain value as text for screen readers', async () => {
+    const { AnimatedFraction, AnimatedNumber } = await import('./components/motion')
+    const { container } = render(<p><AnimatedNumber value={282.7} suffix=" : 1" /> <AnimatedFraction num={9} den={10} /></p>)
+    const sr = Array.from(container.querySelectorAll('.sr-only')).map((e) => e.textContent)
+    expect(sr).toEqual(['282.7 : 1', '9/10'])
+    expect(container.querySelectorAll('.anum-flow[aria-hidden="true"]').length).toBe(2)
   })
 })

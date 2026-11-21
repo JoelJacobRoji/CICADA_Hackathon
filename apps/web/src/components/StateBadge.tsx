@@ -1,3 +1,4 @@
+import { AnimatePresence, m } from 'motion/react'
 import type { HealthState } from '../api/types'
 
 // A state is NEVER conveyed by color alone: each has a distinct icon shape + its text label.
@@ -12,16 +13,23 @@ export function StateBadge({ state, size = 'md' }: { state: HealthState | null |
   if (!state) {
     return <span className="state-badge state-unknown">… pending</span>
   }
-  const m = META[state]
+  const meta = META[state]
   return (
-    <span
-      className={`state-badge ${m.cls} state-${size}`}
-      title={`${state}: ${m.meaning}`}
-      data-state={state}
-    >
-      <span aria-hidden="true" className="state-icon">{m.icon}</span>
-      {state}
-    </span>
+    <AnimatePresence initial={false} mode="popLayout">
+      <m.span
+        key={state}
+        className={`state-badge ${meta.cls} state-${size}`}
+        title={`${state}: ${meta.meaning}`}
+        data-state={state}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        transition={{ duration: 0.25 }}
+      >
+        <span aria-hidden="true" className="state-icon">{meta.icon}</span>
+        {state}
+      </m.span>
+    </AnimatePresence>
   )
 }
 
