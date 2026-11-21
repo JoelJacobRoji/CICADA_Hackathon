@@ -3,7 +3,7 @@
 - **Current phase:** 8 partial: Privacy Glass (M3) done and deployed (24cbdce, 2026-11-21); 9 and 10 complete
 - **Last approved phase:** 6 (approved 2026-11-20). **Phase 8 Privacy Glass approved and built 2026-11-21; other Phase 7-8 items deferred by user decision** (implement after the 2026-11-21 09:00 evaluation); next: demo/validation (9-10) on request
 - **Evaluation:** 2026-11-21 09:00 - criteria: functional product, two-tier (frontend + backend + DB), AI engine, security. Demo: `scripts/demo.ps1` + `docs/DEMO_SCRIPT.md`
-- **Git / deployed:** backend 24cbdce on the VPS (Privacy Glass receipt endpoint); dashboard unchanged since f8f1920 (build.txt). Live e2e 11/11 on f8f1920; re-run on 24cbdce pending (first run invalid: a demo session was running). **The user commits and pushes; never commit/push without being told.**
+- **Git / deployed:** backend 24cbdce on the VPS (Privacy Glass receipt endpoint); dashboard unchanged since f8f1920 (build.txt). Live e2e 11/11 on 24cbdce (2026-11-21; an earlier run was invalid because a demo session held port 9100). **The user commits and pushes; never commit/push without being told.**
 - **Database:** Supabase (ADR-18, Free plan): `aegis-ap-south` (Mumbai) + `aegis-eu-west` (Frankfurt), both at migration 0005 (verified: RLS + policies on all tenant tables, aegis_app no DELETE). Local docker `aegis-pg` (127.0.0.1:55432) for automated tests only.
 - **LLM:** Gemini (free tier) key in apps/saas-api/.env and VPS /etc/aegis/saas.env (root:aegis 0640); enabled for ap-south only (eu-west disabled: residency)
 - **Hackathon clock:** started ≈ 1 h before Phase 1 began on 2026-11-20
