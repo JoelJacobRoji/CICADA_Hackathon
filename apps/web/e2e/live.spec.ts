@@ -115,6 +115,7 @@ test('@live AI engine: a new baseline-deviation incident appears WITHOUT reload'
   await page.getByRole('button', { name: 'Open' }).click()
   const row = page.getByRole('row', { name: /Baseline deviation on server .*cpu_usage/ }).first()
   await expect(row).toBeVisible({ timeout: 200_000 })
+  await expect(page.getByText(/^Blast radius · \d+ sources?$/)).toBeVisible({ timeout: 20_000 }) // preview pane loaded
   await page.screenshot({ path: `${SHOTS}/incident-center.png`, fullPage: true })
   await row.getByRole('link').click()
   await expect(page.getByRole('heading', { name: 'Probable cause' })).toBeVisible()
