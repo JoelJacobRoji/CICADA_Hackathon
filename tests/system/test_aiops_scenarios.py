@@ -25,7 +25,13 @@ from saas_api.health.engine import HealthEngine
 from saas_api.health.thresholds import load as load_th
 
 from simulator.generator import Generator
-from simulator.scenarios import s3_failed_logins, s4_latency_ramp, s5_cpu_step, s6_cascade
+from simulator.scenarios import (
+    s1_secret_log,
+    s3_failed_logins,
+    s4_latency_ramp,
+    s5_cpu_step,
+    s6_cascade,
+)
 
 TENANT = uuid.uuid4()
 WARMUP_S = 120  # 60 windows per series: past the 30-window minimum baseline history
@@ -190,3 +196,25 @@ def test_back_to_back_s6_then_recovery_then_s5_no_false_incident(h):
         for a in alerts
     ]
     assert alerts[0].evidence["direction"] == "up" and alerts[0].evidence["baseline_median"] < 45
+
+
+def test_demo_timeline_s1_s3_s5_s6_gives_exactly_three_incidents(h):
+    """scripts/demo.ps1 default timeline: s1@30 s3@75 s5@240 s6@500 over 12 minutes.
+    S1 (secret log, Privacy Glass) must add no incident; S3, S5, S6 must stay separate."""
+    start = h.now
+    gen = Generator(seed=21)
+    for sc, at in ((s1_secret_log(), 30), (s3_failed_logins(), 75), (s5_cpu_step(), 240)):
+        gen.add_scenario(sc, start + timedelta(seconds=at))
+    gen.add_scenario(s6_cascade(), start + timedelta(seconds=500))
+    chunk = 10
+    for k in range(720 // chunk):
+        h.run(gen, start + timedelta(seconds=k * chunk), chunk)
+        h.eng.sweep()
+    titles = sorted(i.title for i in h.incidents())
+    assert len(titles) == 3, titles
+    assert any(t.startswith("Repeated failed logins") for t in titles), titles
+    roots = {i.root_entity for i in h.incidents()}
+    assert {h.pid("SRV_002"), h.pid("NET_001")} <= roots
+    assert h.pid("SRV_001") not in roots  # the S1 secret log raised nothing
+    egress = "".join(r[0] for r in h.p.conn.execute("SELECT payload_json FROM egress_ledger"))
+    assert "FAKE_P@ss123" not in egress and "svc_billing" not in egress

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AEGIS Privacy Glass</title>
+  <link rel="stylesheet" href="/glass/app.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>AEGIS Privacy Glass</h1>
+      <p class="sub">Local collector console · served only on this machine (127.0.0.1) · data: SYNTHETIC (AEGIS simulator)</p>
+    </div>
+    <span class="chip local">LOCAL ONLY</span>
+  </header>
+
+  <section id="unlock" class="card">
+    <h2>Unlock</h2>
+    <p>Paste the collector's local admin token. It is kept in this tab's memory only, never stored.</p>
+    <div class="row">
+      <input id="token" type="password" autocomplete="off" placeholder="local admin token" aria-label="Local admin token">
+      <button id="unlockBtn" type="button">Unlock</button>
+    </div>
+    <p id="unlockErr" class="err" hidden></p>
+  </section>
+
+  <main id="app" hidden>
+    <section class="card">
+      <h2>One payload, end to end</h2>
+      <p>What the collector saw, what it masked, the exact bytes that left, and the hash the SaaS computed from what it received.</p>
+      <div class="row wrap">
+        <button type="button" data-kind="security_summary">Latest security summary</button>
+        <button type="button" data-kind="metric_summary">Latest metric summary</button>
+        <button type="button" data-kind="topology_edge">Latest topology edge</button>
+        <input id="pid" type="text" placeholder="or a payload ID" aria-label="Payload ID">
+        <button id="openBtn" type="button">Open</button>
+      </div>
+      <p id="loadErr" class="err" hidden></p>
+    </section>
+
+    <section id="verdicts" class="verdicts" hidden></section>
+
+    <section id="columns" class="columns" hidden>
+      <article class="col">
+        <header><span class="step">1</span><div><h3>Raw records</h3><p>Stay on this machine</p></div></header>
+        <div id="c1"></div>
+      </article>
+      <article class="col">
+        <header><span class="step">2</span><div><h3>Masked locally</h3><p>Secrets scrubbed for the console</p></div></header>
+        <div id="c2"></div>
+      </article>
+      <article class="col out">
+        <header><span class="step">3</span><div><h3>What left</h3><p>Exact ledgered JSON</p></div></header>
+        <div id="c3"></div>
+      </article>
+      <article class="col">
+        <header><span class="step">4</span><div><h3>SaaS receipt</h3><p>Hash computed on arrival</p></div></header>
+        <div id="c4"></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Secret leak scan</h2>
+      <p>Takes every local record where a secret was found, extracts its sensitive values (names, IDs, IPs, keys, the whole message) and searches every ledgered payload for them.</p>
+      <div class="row"><button id="scanBtn" type="button">Run leak scan</button></div>
+      <div id="scan"></div>
+    </section>
+  </main>
+
+  <footer class="foot">Column 1 is read from the collector's local SQLite store. The SaaS has no route to it. Only column 3 was transmitted.</footer>
+  <script src="/glass/app.js"></script>
+</body>
+</html>

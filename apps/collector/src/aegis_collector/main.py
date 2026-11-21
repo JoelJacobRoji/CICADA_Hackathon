@@ -16,6 +16,8 @@ from starlette.concurrency import run_in_threadpool
 from . import __version__
 from .adapters import http_ingest
 from .config import get_settings
+from .glass import ReceiptClient
+from .glass_page import build_router as build_glass_page
 from .local_api import build_router as build_local_router
 from .pipeline.localconfig import load_inventory, load_thresholds
 from .pipeline.runner import Pipeline
@@ -90,6 +92,7 @@ def create_app() -> FastAPI:
 
         app.state.sender = None
         app.state.notifications = None
+        app.state.receipts = None
         http_client = None
         if settings.collector_token is not None:
             import httpx
@@ -108,6 +111,7 @@ def create_app() -> FastAPI:
                 batch_size=settings.send_batch_size,
             )
             app.state.sender = sender
+            app.state.receipts = ReceiptClient(http_client, settings.region, token)
             cfg_hash = hb.config_hash(
                 settings.config_dir, f"{settings.window_seconds}|{settings.window_grace_seconds}"
             )
@@ -204,6 +208,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(http_ingest.build_router())
     app.include_router(build_local_router())
+    app.include_router(build_glass_page())
 
     @app.get("/healthz", tags=["ops"])
     def healthz() -> dict[str, str]:

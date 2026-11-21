@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from .config import get_settings
 from .egress.ledger import verify_chain
 from .egress.notifications import list_local
+from .glass import ReceiptClient, assemble, leak_scan
 from .security import bearer_dependency
 
 log = structlog.get_logger("collector.local_api")
@@ -146,6 +147,24 @@ def build_router() -> APIRouter:
             ),
             "items": list_local(p.conn, p.lock, limit),
         }
+
+    @router.get("/glass")
+    def glass(
+        request: Request,
+        payload_id: str | None = None,
+        kind: str | None = Query(None, pattern="^(metric_summary|security_summary|topology_edge)$"),
+    ) -> dict[str, Any]:
+        """Privacy Glass: raw (local) -> masked -> exact outbound JSON + SHA-256 -> SaaS receipt."""
+        receipts = getattr(request.app.state, "receipts", None) or ReceiptClient(None, "", None)
+        view = assemble(_db(request), receipts, payload_id, kind)
+        if view is None:
+            raise HTTPException(404, "no payload yet")
+        return view
+
+    @router.get("/glass/leakscan")
+    def glass_leakscan(request: Request, limit: int = Query(200, ge=1, le=1000)) -> dict[str, Any]:
+        """Search all ledgered payloads for sensitive values of local secret-bearing records."""
+        return leak_scan(_db(request), limit)
 
     @router.get("/pseudonyms/{source_pid}")
     def lookup(request: Request, source_pid: str) -> dict[str, str]:

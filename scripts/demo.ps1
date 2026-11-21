@@ -7,6 +7,7 @@
     2. Collector                 (127.0.0.1:9100) - sends allow-listed metadata to the VPS
     3. Simulator (SYNTHETIC)     - normal traffic, then scenarios on a fixed timeline:
          t+0      normal traffic (baselines learn; >= 60 s needed before detection)
+         t+30 s   S1  raw app log with (fake) secrets on SRV_001 (stays local: Privacy Glass)
          t+75 s   S3  25 failed SSH logins on SRV_002 (security incident, counts only)
          t+240 s  S5  CPU step on SRV_002 to ~80 % (below static 85 %: only the AI baseline sees it)
          t+500 s  S6  NET_001 packet loss + latency; APP_001/APP_002 degrade 20 s later
@@ -19,7 +20,7 @@
 #>
 param(
   [int]$Minutes = 12,
-  [string[]]$Scenarios = @('s3@75', 's5@240', 's6@500')
+  [string[]]$Scenarios = @('s1@30', 's3@75', 's5@240', 's6@500')
 )
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
@@ -45,4 +46,5 @@ Start-Process $ps -ArgumentList '-NoExit', '-Command',
   "`$host.UI.RawUI.WindowTitle='AEGIS simulator (SYNTHETIC)'; Set-Location '$Root'; & '$py' $($simArgs -join ' ')"
 
 Write-Host "Demo running for $Minutes min. Dashboard: https://aegis.162-35-42-114.sslip.io"
+Write-Host 'Privacy Glass (local only): ./scripts/glass.ps1  (opens http://127.0.0.1:9100/glass, token to clipboard)'
 Write-Host 'Stop: close the three windows (closing the collector shows "collector offline" within ~35 s).'

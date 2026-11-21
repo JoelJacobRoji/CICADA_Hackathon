@@ -2,6 +2,7 @@
 
 POST /api/v1/ingest/{region}    IngestBatch  -> IngestAck
 POST /api/v1/heartbeat/{region} Heartbeat    -> 204
+GET  /api/v1/ingest/{region}/receipts/{id}    -> receipt hash of one of the caller's own payloads
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from aegis_contracts.outbound import (
 )
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import Field, TypeAdapter, ValidationError
-from sqlalchemy import text, update
+from sqlalchemy import and_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from starlette.concurrency import run_in_threadpool
 
@@ -236,6 +237,41 @@ def build_router() -> APIRouter:
             for ev in incident_events:
                 await hub.publish(ctx.tenant_id, ev)
         return ack
+
+    @router.get("/api/v1/ingest/{region}/receipts/{payload_id}")
+    async def collector_receipt(
+        payload_id: uuid.UUID, ctx: CollectorCtx = Depends(require_collector)
+    ) -> dict[str, Any]:
+        """Privacy Glass: a collector fetches the SaaS-side hash of ITS OWN payload.
+
+        Returns only the receipt (no stored metadata). Other collectors' or tenants' IDs -> 404.
+        """
+
+        def _find() -> dict[str, Any] | None:
+            with tenant_connection(ctx.region, ctx.tenant_id) as conn:
+                for kind, table in KIND_TABLE.items():
+                    row = conn.execute(
+                        select(table.c.payload_sha256, table.c.received_at).where(
+                            and_(
+                                table.c.payload_id == payload_id,
+                                table.c.collector_id == ctx.collector_id,
+                            )
+                        )
+                    ).first()
+                    if row is not None:
+                        return {
+                            "payload_id": str(payload_id),
+                            "kind": kind,
+                            "payload_sha256": row.payload_sha256,
+                            "received_at": row.received_at.isoformat(),
+                            "region": ctx.region,
+                        }
+            return None
+
+        found = await run_in_threadpool(_find)
+        if found is None:
+            raise HTTPException(404, "not found")
+        return found
 
     @router.post("/api/v1/heartbeat/{region}", status_code=204)
     async def heartbeat(
