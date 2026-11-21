@@ -19,7 +19,7 @@ from .config import get_settings
 from .glass import ReceiptClient
 from .glass_page import build_router as build_glass_page
 from .local_api import build_router as build_local_router
-from .pipeline.localconfig import load_inventory, load_thresholds
+from .pipeline.localconfig import load_inventory, load_thresholds, merge_inventories
 from .pipeline.runner import Pipeline
 from .store import init_db, journal_mode
 
@@ -62,7 +62,10 @@ def create_app() -> FastAPI:
             collector_id=settings.collector_id,
             pseudonym_secret=settings.pseudonym_secret.get_secret_value(),
             thresholds=load_thresholds(settings.config_dir / "health_thresholds.yaml"),
-            inventory=load_inventory(settings.config_dir / "inventory.yaml"),
+            inventory=merge_inventories(
+                load_inventory(settings.config_dir / "inventory.yaml"),
+                load_inventory(settings.config_dir / "inventory.real.yaml"),
+            ),
             window_seconds=settings.window_seconds,
             grace_seconds=settings.window_grace_seconds,
         )
@@ -89,6 +92,34 @@ def create_app() -> FastAPI:
                         log.error("system_agent_failed", error=type(exc).__name__)
 
             tasks.append(asyncio.create_task(_agent_loop()))
+
+        # Diversified REAL sources: storage, database, web application (each opt-in).
+        from .adapters import real_agents
+
+        readers: list[tuple[str, object]] = []
+        if settings.storage_agent_enabled:
+            readers.append(("storage_agent", real_agents.StorageAgent()))
+        if settings.postgres_agent_dsn is not None:
+            readers.append(
+                (
+                    "postgres_agent",
+                    real_agents.PostgresAgent(settings.postgres_agent_dsn.get_secret_value()),
+                )
+            )
+        if settings.web_agent_url:
+            readers.append(("web_agent", real_agents.WebAgent(settings.web_agent_url)))
+        for name, reader in readers:
+
+            async def _reader_loop(name: str = name, reader=reader) -> None:  # noqa: ANN001
+                while True:
+                    await asyncio.sleep(settings.real_agents_interval_seconds)
+                    try:
+                        records = await run_in_threadpool(reader.sample)
+                        await run_in_threadpool(pipeline.process, name, records)
+                    except Exception as exc:  # noqa: BLE001 - one reader must not stop others
+                        log.error("real_agent_failed", agent=name, error=type(exc).__name__)
+
+            tasks.append(asyncio.create_task(_reader_loop()))
 
         app.state.sender = None
         app.state.notifications = None
@@ -128,6 +159,15 @@ def create_app() -> FastAPI:
                     }.get(sender.state, hb.AdapterStatus.DEGRADED),
                     "system_agent": hb.AdapterStatus.OK
                     if settings.system_agent_enabled
+                    else hb.AdapterStatus.DISABLED,
+                    "storage_agent": hb.AdapterStatus.OK
+                    if settings.storage_agent_enabled
+                    else hb.AdapterStatus.DISABLED,
+                    "postgres_agent": hb.AdapterStatus.OK
+                    if settings.postgres_agent_dsn is not None
+                    else hb.AdapterStatus.DISABLED,
+                    "web_agent": hb.AdapterStatus.OK
+                    if settings.web_agent_url
                     else hb.AdapterStatus.DISABLED,
                 }
                 beat = hb.build(

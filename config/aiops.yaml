@@ -11,6 +11,10 @@ baseline:
   alert_direction:          # which deviation is harmful (others are tracked, never alerted)
     default: up             # cpu/memory/disk/latency/loss/errors: only increases are bad
     bandwidth_mbps: both
+    cache_hit_ratio: down   # a falling cache-hit ratio is the harmful direction
+    request_rate: both      # a collapse (outage) or a surge are both worth an alert
+    db_tps: both
+    disk_iops: both
   mad_floor:                # minimum MAD per metric so a flat signal can't give an infinite z
     cpu_usage: 1.0
     memory_usage: 0.5
@@ -19,6 +23,12 @@ baseline:
     packet_loss: 0.1
     bandwidth_mbps: 5.0
     error_rate: 0.2
+    disk_iops: 5.0
+    disk_latency_ms: 1.0
+    db_connections: 1.0
+    db_tps: 2.0
+    cache_hit_ratio: 0.5
+    request_rate: 2.0
 
 trend:
   windows: 15               # least-squares slope over the last N windows

@@ -1,12 +1,13 @@
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/auth'
 import { Layout } from './components/Layout'
+import { MotionProvider } from './components/motion'
 import { Fleet } from './pages/Fleet'
 import { IncidentDetail } from './pages/IncidentDetail'
 import { Incidents } from './pages/Incidents'
 import { Trust } from './pages/Trust'
 import { Login } from './pages/Login'
-import { Infrastructure, Network } from './pages/MetricsPage'
+import { DataTier, Infrastructure, Network } from './pages/MetricsPage'
 import { Overview } from './pages/Overview'
 import { Receipts } from './pages/Receipts'
 import { Security } from './pages/Security'
@@ -24,6 +25,7 @@ function Gate() {
         <Route path="fleet" element={<Fleet />} />
         <Route path="infrastructure" element={<Infrastructure />} />
         <Route path="network" element={<Network />} />
+        <Route path="data-tier" element={<DataTier />} />
         <Route path="security" element={<Security />} />
         <Route path="incidents" element={<Incidents />} />
         <Route path="incidents/:id" element={<IncidentDetail />} />
@@ -40,9 +42,11 @@ function Gate() {
 export function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Gate />
-      </AuthProvider>
+      <MotionProvider>
+        <AuthProvider>
+          <Gate />
+        </AuthProvider>
+      </MotionProvider>
     </BrowserRouter>
   )
 }

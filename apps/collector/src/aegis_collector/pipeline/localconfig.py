@@ -56,9 +56,12 @@ class Inventory:
         if info:
             return info.kind
         prefix = source_id.split("_", 1)[0].upper()
-        return {"NET": SourceKind.NETWORK_DEVICE, "APP": SourceKind.APPLICATION}.get(
-            prefix, SourceKind.SERVER
-        )
+        return {
+            "NET": SourceKind.NETWORK_DEVICE,
+            "APP": SourceKind.APPLICATION,
+            "STO": SourceKind.STORAGE,
+            "DB": SourceKind.DATABASE,
+        }.get(prefix, SourceKind.SERVER)
 
 
 def load_thresholds(path: Path) -> Thresholds:
@@ -70,6 +73,16 @@ def load_thresholds(path: Path) -> Thresholds:
     binary = frozenset(k for k, v in data.get("binary", {}).items() if v.get("poor_when_zero"))
     sec = SecurityThresholds(**data.get("security", {}))
     return Thresholds(numeric=numeric, binary_poor_when_zero=binary, security=sec)
+
+
+def merge_inventories(*parts: Inventory) -> Inventory:
+    """Union of several inventory files (e.g. the simulated inventory + real sources)."""
+    sources: dict[str, SourceInfo] = {}
+    edges: list[Edge] = []
+    for p in parts:
+        sources.update(p.sources)
+        edges.extend(e for e in p.edges if e not in edges)
+    return Inventory(sources=sources, edges=tuple(edges))
 
 
 def load_inventory(path: Path) -> Inventory:

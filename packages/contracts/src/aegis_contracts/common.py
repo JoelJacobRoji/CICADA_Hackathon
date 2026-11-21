@@ -78,6 +78,13 @@ class Metric(StrEnum):
     PACKET_LOSS = "packet_loss"
     BANDWIDTH_MBPS = "bandwidth_mbps"
     CONNECTIVITY = "connectivity"
+    # Diversified real sources (additive): storage, database, web application
+    DISK_IOPS = "disk_iops"
+    DISK_LATENCY_MS = "disk_latency_ms"
+    DB_CONNECTIONS = "db_connections"
+    DB_TPS = "db_tps"
+    CACHE_HIT_RATIO = "cache_hit_ratio"
+    REQUEST_RATE = "request_rate"
 
 
 class Unit(StrEnum):
@@ -85,6 +92,9 @@ class Unit(StrEnum):
     MS = "ms"
     MBPS = "mbps"
     BOOL = "bool"
+    OPS = "ops"  # operations per second
+    COUNT = "count"
+    RPS = "rps"  # requests/transactions per second
 
 
 METRIC_UNIT: dict[Metric, Unit] = {
@@ -97,6 +107,12 @@ METRIC_UNIT: dict[Metric, Unit] = {
     Metric.PACKET_LOSS: Unit.PERCENT,
     Metric.BANDWIDTH_MBPS: Unit.MBPS,
     Metric.CONNECTIVITY: Unit.BOOL,
+    Metric.DISK_IOPS: Unit.OPS,
+    Metric.DISK_LATENCY_MS: Unit.MS,
+    Metric.DB_CONNECTIONS: Unit.COUNT,
+    Metric.DB_TPS: Unit.RPS,
+    Metric.CACHE_HIT_RATIO: Unit.PERCENT,
+    Metric.REQUEST_RATE: Unit.RPS,
 }
 
 METRIC_CATEGORY: dict[Metric, Category] = {
@@ -109,6 +125,12 @@ METRIC_CATEGORY: dict[Metric, Category] = {
     Metric.PACKET_LOSS: Category.NETWORK,
     Metric.BANDWIDTH_MBPS: Category.NETWORK,
     Metric.CONNECTIVITY: Category.NETWORK,
+    Metric.DISK_IOPS: Category.INFRASTRUCTURE,
+    Metric.DISK_LATENCY_MS: Category.INFRASTRUCTURE,
+    Metric.DB_CONNECTIONS: Category.APPLICATION,
+    Metric.DB_TPS: Category.APPLICATION,
+    Metric.CACHE_HIT_RATIO: Category.APPLICATION,
+    Metric.REQUEST_RATE: Category.APPLICATION,
 }
 
 

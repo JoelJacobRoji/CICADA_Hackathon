@@ -11,6 +11,9 @@ numeric:
   error_rate:     { good: 1,   fair: 5,   poor: 15 }
   # Assumes a 1 Gbps link; adjust per environment.
   bandwidth_mbps: { good: 800, fair: 900, poor: 950 }
+  # Real storage source: average I/O completion time (higher is worse). Rates, connections and
+  # cache-hit ratio have no universal static limit: they are watched by the AI baseline only.
+  disk_latency_ms: { good: 10, fair: 25, poor: 50 }
 binary:
   # value 0 in any sample of the window -> Poor
   service_up:   { poor_when_zero: true }

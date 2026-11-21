@@ -51,6 +51,7 @@ test('screenshot gallery', async ({ browser }) => {
 
       const pages: [string, string][] = [
         ['fleet', '/fleet'], ['infrastructure', '/infrastructure'], ['network', '/network'],
+        ['data-tier', '/data-tier'],
         ['security', '/security'], ['incidents', '/incidents'], ['topology', '/topology'],
         ['trust', '/trust'], ['receipts', '/receipts'], ['settings', '/settings'],
       ]

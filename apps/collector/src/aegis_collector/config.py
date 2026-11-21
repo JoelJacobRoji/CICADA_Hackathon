@@ -45,6 +45,15 @@ class CollectorSettings(BaseSettings):
     system_agent_interval_seconds: float = Field(default=2.0, ge=0.5, le=60)
     probe_targets: list[str] = ["1.1.1.1:443", "8.8.8.8:443"]
 
+    # Diversified REAL sources (all off by default; enable in apps/collector/.env):
+    #   storage  -> STO_LAPTOP_DISK  (psutil disk I/O counters of this machine)
+    #   database -> DB_AEGIS_PG      (read-only monitoring role; aggregate pg_stat numbers only)
+    #   web app  -> APP_WEB_DEMO     (scripts/demo_webapp.py metrics endpoint on a local address)
+    storage_agent_enabled: bool = False
+    postgres_agent_dsn: SecretStr | None = None
+    web_agent_url: str | None = None
+    real_agents_interval_seconds: float = Field(default=2.0, ge=0.5, le=60)
+
     saas_base_url: str = "http://127.0.0.1:9001"
     send_interval_seconds: float = Field(default=0.5, ge=0.1, le=30)
     send_batch_size: int = Field(default=500, ge=1, le=500)
@@ -65,6 +74,20 @@ class CollectorSettings(BaseSettings):
         if v not in LOOPBACK_HOSTS:
             raise ValueError("collector must bind to a loopback address")
         return v
+
+    @field_validator("web_agent_url", mode="before")
+    @classmethod
+    def _web_agent_local_only(cls, v: object) -> object:
+        if v in ("", None):
+            return None
+        from .egress.notifications import validate_webhook_url
+
+        return validate_webhook_url(str(v))  # loopback/private literal IP or localhost only
+
+    @field_validator("postgres_agent_dsn", mode="before")
+    @classmethod
+    def _empty_dsn_is_none(cls, v: object) -> object:
+        return None if v in ("", None) else v
 
     @field_validator("notify_webhook_url", mode="before")
     @classmethod

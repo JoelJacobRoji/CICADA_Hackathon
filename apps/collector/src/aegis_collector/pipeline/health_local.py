@@ -20,6 +20,7 @@ _CODE = {
     Metric.BANDWIDTH_MBPS: SummaryCode.BANDWIDTH_HIGH,
     Metric.SERVICE_UP: SummaryCode.SERVICE_DOWN,
     Metric.CONNECTIVITY: SummaryCode.CONNECTIVITY_LOST,
+    Metric.DISK_LATENCY_MS: SummaryCode.DISK_LATENCY_HIGH,
 }
 _SEVERITY = {
     HealthState.EXCELLENT: Severity.INFO,

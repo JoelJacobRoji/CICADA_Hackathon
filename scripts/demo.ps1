@@ -20,12 +20,22 @@
 #>
 param(
   [int]$Minutes = 12,
-  [string[]]$Scenarios = @('s1@30', 's3@75', 's5@240', 's6@500')
+  [string[]]$Scenarios = @('s1@30', 's3@75', 's5@240', 's6@500'),
+  [switch]$NoRealSources  # skip the REAL demo web app + traffic (storage/database readers still run if enabled)
 )
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $py = Join-Path $Root '.venv\Scripts\python.exe'
 $ps = (Get-Process -Id $PID).Path
+
+# REAL diversified sources: a small web app backed by the local PostgreSQL + real traffic for it
+# (scripts/setup_real_sources.py must have been run once). The collector's readers poll them.
+if (-not $NoRealSources) {
+  Start-Process $ps -ArgumentList '-NoExit', '-Command',
+    "`$host.UI.RawUI.WindowTitle='AEGIS demo web app (REAL)'; Set-Location '$Root'; & '$py' scripts/demo_webapp.py"
+  Start-Process $ps -ArgumentList '-NoExit', '-Command',
+    "`$host.UI.RawUI.WindowTitle='AEGIS web traffic (REAL)'; Set-Location '$Root'; Start-Sleep 3; & '$py' scripts/demo_web_load.py --rps 8 --minutes $($Minutes + 5)"
+}
 
 Start-Process $ps -ArgumentList '-NoExit', '-Command',
   "`$host.UI.RawUI.WindowTitle='AEGIS device webhook'; Set-Location '$Root'; & '$py' scripts/webhook_receiver.py --port 9200"

@@ -4,7 +4,9 @@ import type { AiopsSummary, HealthSummary, LiveEvent } from '../api/types'
 import { STATES } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth } from '../auth/auth'
-import { live, useLiveStatus } from '../live/live'
+import { live } from '../live/live'
+import { LiveTicker } from './LiveTicker'
+import { PageTransition } from './motion'
 import { applyTheme, storedTheme, type Theme } from '../lib/theme'
 import { ShieldMark } from './Brand'
 import { useNow } from './common'
@@ -19,6 +21,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: '/incidents', label: 'Incident center', badge: 'incidents' },
       { to: '/infrastructure', label: 'Infrastructure' },
       { to: '/network', label: 'Network' },
+      { to: '/data-tier', label: 'Data tier' },
       { to: '/fleet', label: 'Collector fleet' },
     ],
   },
@@ -83,10 +86,11 @@ function useHeaderStatus() {
 
 export function Layout() {
   const { me, logout } = useAuth()
-  const status = useLiveStatus()
+  const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
   const { aiops, health } = useHeaderStatus()
   const crumb = PAGE_NAMES.find(([re]) => re.test(pathname))
+  useEffect(() => setMenuOpen(false), [pathname]) // close the mobile menu after navigating
 
   const open = aiops ? aiops.open_by_priority.P1 + aiops.open_by_priority.P2 + aiops.open_by_priority.P3 : null
   const p1 = aiops?.open_by_priority.P1 ?? 0
@@ -96,7 +100,11 @@ export function Layout() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${menuOpen ? ' menu-open' : ''}`}>
+        <button type="button" className="btn btn-ghost btn-pill menu-btn" aria-expanded={menuOpen}
+          aria-controls="main-nav" onClick={() => setMenuOpen((v) => !v)}>
+          {menuOpen ? 'Close menu' : 'Menu'}
+        </button>
         <div className="brand">
           <span className="brand-mark"><ShieldMark /></span>
           <span>
@@ -104,7 +112,7 @@ export function Layout() {
             <span className="brand-sub">Privacy-first observability</span>
           </span>
         </div>
-        <nav aria-label="Main">
+        <nav aria-label="Main" id="main-nav">
           {NAV.map((g) => (
             <div key={g.group} className="nav-group">
               <div className="nav-group-label">{g.group}</div>
@@ -152,9 +160,7 @@ export function Layout() {
                 {colUp}/{colTotal} collectors
               </Link>
             )}
-            <span className={`pill live-${status}`} role="status" aria-live="polite">
-              <span className="live-dot" aria-hidden="true" /> {status === 'live' ? 'Live' : status}
-            </span>
+            <LiveTicker />
             <UtcClock />
             <ThemeToggle />
             <span className="muted">{me?.role.replace('tenant_', '')}</span>
@@ -167,7 +173,9 @@ export function Layout() {
           </div>
         )}
         <main className="content">
-          <Outlet />
+          <PageTransition key={pathname}>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
     </div>

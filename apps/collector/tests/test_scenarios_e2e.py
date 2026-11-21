@@ -121,7 +121,8 @@ def test_pseudonym_lookup_is_local_only_and_consistent(client):
 
 def test_topology_edges_emitted_once_with_pseudonyms(client):
     rows = client.get("/local/egress?kind=topology_edge&limit=100", headers=ADMIN).json()
-    assert len(rows) == 10
+    # 10 simulated edges (config/inventory.yaml) + 2 real ones (config/inventory.real.yaml)
+    assert len(rows) == 12
     p = client.get(f"/local/egress/{rows[0]['payload_id']}", headers=ADMIN).json()["payload"]
     assert p["from_pid"].startswith("src_") and p["to_pid"].startswith("src_")
 

@@ -43,6 +43,8 @@ class SourceKind(StrEnum):
     SERVER = "server"
     NETWORK_DEVICE = "network_device"
     APPLICATION = "application"
+    STORAGE = "storage"
+    DATABASE = "database"
 
 
 class SummaryCode(StrEnum):
@@ -57,6 +59,7 @@ class SummaryCode(StrEnum):
     PACKET_LOSS_HIGH = "PACKET_LOSS_HIGH"
     BANDWIDTH_HIGH = "BANDWIDTH_HIGH"
     CONNECTIVITY_LOST = "CONNECTIVITY_LOST"
+    DISK_LATENCY_HIGH = "DISK_LATENCY_HIGH"
     BASELINE_DEVIATION = "BASELINE_DEVIATION"
 
 

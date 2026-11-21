@@ -1,0 +1,13 @@
+# REAL sources (not simulated). Read ONLY by the collector, never by the simulator, so no synthetic
+# data is ever generated for these IDs. Real IDs stay local; they are pseudonymised (src_...) on egress.
+#   STO_LAPTOP_DISK  storage   : the collector machine's system disk (psutil disk I/O counters)
+#   DB_AEGIS_PG      database  : local PostgreSQL container (read-only monitoring role, aggregates only)
+#   APP_WEB_DEMO     web app   : scripts/demo_webapp.py, a small real HTTP service backed by DB_AEGIS_PG
+# Dependencies are the true ones: the web app queries the database, whose data lives on the disk.
+sources:
+  STO_LAPTOP_DISK: { kind: storage,     timezone: UTC }
+  DB_AEGIS_PG:     { kind: database,    timezone: UTC }
+  APP_WEB_DEMO:    { kind: application, timezone: UTC }
+edges:
+  - { from: APP_WEB_DEMO, to: DB_AEGIS_PG,     relation: depends_on }
+  - { from: DB_AEGIS_PG,  to: STO_LAPTOP_DISK, relation: depends_on }

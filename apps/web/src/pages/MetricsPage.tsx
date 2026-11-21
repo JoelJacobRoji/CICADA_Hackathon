@@ -76,3 +76,11 @@ export function Network() {
       metrics={['latency_ms', 'packet_loss', 'bandwidth_mbps', 'connectivity', 'error_rate', 'service_up']} />
   )
 }
+
+export function DataTier() {
+  return (
+    <MetricsPage title="Data tier: storage, database, web"
+      intro="REAL measurements from the collector machine: system disk (IOPS, I/O latency), the local PostgreSQL database (connections, transactions/s, cache hit ratio, rollback rate) and a demo web application backed by it (request rate, errors, p95 latency). Sources appear as src_ pseudonyms; rates and cache hit ratio are watched by the AI baseline (no fixed limit)."
+      metrics={['disk_iops', 'disk_latency_ms', 'db_tps', 'db_connections', 'cache_hit_ratio', 'request_rate', 'error_rate', 'latency_ms']} />
+  )
+}

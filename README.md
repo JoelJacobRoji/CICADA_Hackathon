@@ -7,6 +7,8 @@ four-state health, correlated incidents and grounded AI explanations.
 **Live:** https://aegis.162-35-42-114.sslip.io · **Data:** SYNTHETIC for 9 sources, from the AEGIS simulator (the organizers
 provide no dataset, so it is the official source), plus **REAL** host metrics from the collector laptop (system agent:
 CPU, memory, disk, bandwidth, TCP-probe latency/loss; shown in the cloud only as a `src_…` pseudonym).
+**Diversified REAL sources** (opt-in, `scripts/setup_real_sources.py`): storage (system disk IOPS/latency), database
+(local PostgreSQL via a read-only role) and a web application (`scripts/demo_webapp.py` + real traffic) — see the Data tier page.
 
 > Status: Phases 1–6 and 9 complete and deployed; Phase 10 materials ready. Phase 8: Privacy Glass (M3) done;
 > other Phase 7–8 extras deferred.

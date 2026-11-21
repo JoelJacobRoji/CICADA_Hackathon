@@ -10,9 +10,15 @@ export const METRIC_LABEL: Record<string, string> = {
   connectivity: 'Connectivity',
   service_up: 'Service availability',
   error_rate: 'Error rate',
+  disk_iops: 'Disk IOPS',
+  disk_latency_ms: 'Disk latency',
+  db_connections: 'DB connections',
+  db_tps: 'DB transactions/s',
+  cache_hit_ratio: 'Cache hit ratio',
+  request_rate: 'Request rate',
 }
 
-const UNIT: Record<string, string> = { percent: '%', ms: ' ms', mbps: ' Mbps', bool: '' }
+const UNIT: Record<string, string> = { percent: '%', ms: ' ms', mbps: ' Mbps', bool: '', ops: ' ops/s', rps: '/s', count: '' }
 
 export function metricLabel(m: string): string {
   return METRIC_LABEL[m] ?? m
