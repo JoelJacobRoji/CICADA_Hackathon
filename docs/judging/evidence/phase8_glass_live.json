@@ -1,0 +1,69 @@
+{
+  "run_at_utc": "2026-11-21T01:14:01.029651+00:00",
+  "data": "SYNTHETIC (AEGIS simulator, demo.ps1 timeline incl. S1/S3)",
+  "method": "read-only queries to the running laptop collector (apps/collector/.env -> deployed SaaS 24cbdce); receipts fetched live from production",
+  "views": {
+    "security_summary": {
+      "payload_id": "7fe186b1-4ab8-56f7-a186-a4a2eefc9dda",
+      "outbox_status": "delivered",
+      "raw_records_shown": 146,
+      "raw_records_in_payload": 20,
+      "sensitive_values_checked": 151,
+      "sensitive_values_in_outbound": 0,
+      "ledger_hash_ok": true,
+      "collector_sha256": "1ab14beae753312862d6513e1dcf2aebe36c58306727c38bc40b0fd588b9d336",
+      "receipt_status": "ok",
+      "saas_sha256": "1ab14beae753312862d6513e1dcf2aebe36c58306727c38bc40b0fd588b9d336",
+      "saas_received_at": "2026-11-21T00:57:51.002593+00:00",
+      "hash_match": true
+    },
+    "metric_summary": {
+      "payload_id": "06bef2fb-427c-5175-a7e4-e973c38aa4f5",
+      "outbox_status": "delivered",
+      "raw_records_shown": 5,
+      "raw_records_in_payload": 2,
+      "sensitive_values_checked": 7,
+      "sensitive_values_in_outbound": 0,
+      "ledger_hash_ok": true,
+      "collector_sha256": "3c91865177d5f1e0f49783a7f238667212ed126219bf8aac6acb438302967e0b",
+      "receipt_status": "ok",
+      "saas_sha256": "3c91865177d5f1e0f49783a7f238667212ed126219bf8aac6acb438302967e0b",
+      "saas_received_at": "2026-11-21T01:10:55.046820+00:00",
+      "hash_match": true
+    },
+    "topology_edge": {
+      "payload_id": "bfe8b09b-b4a4-5b6e-aa84-479809dabbed",
+      "outbox_status": "delivered",
+      "raw_records_shown": 0,
+      "raw_records_in_payload": 0,
+      "sensitive_values_checked": 0,
+      "sensitive_values_in_outbound": 0,
+      "ledger_hash_ok": true,
+      "collector_sha256": "258cb5cde51fff973216e146ba5e6fad42550ee495eb490e73b65f141bc3860d",
+      "receipt_status": "ok",
+      "saas_sha256": "258cb5cde51fff973216e146ba5e6fad42550ee495eb490e73b65f141bc3860d",
+      "saas_received_at": "2026-11-20T13:33:14.082894+00:00",
+      "hash_match": true
+    }
+  },
+  "leak_scan": {
+    "records_with_findings": 51,
+    "sensitive_values_checked": 65,
+    "payloads_scanned": 20000,
+    "payloads_total": 26172,
+    "found": 0,
+    "example_findings": [
+      "api_key",
+      "aws_access_key",
+      "credential_kv",
+      "email",
+      "field:password",
+      "field:src_ip",
+      "field:user",
+      "ipv4",
+      "jwt"
+    ],
+    "note": "running collector predates the 200k scan cap (20k cap); scanned the latest 20,000 of the total"
+  },
+  "passed": true
+}

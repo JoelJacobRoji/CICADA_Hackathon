@@ -7,7 +7,8 @@ four-state health, correlated incidents and grounded AI explanations.
 **Live:** https://aegis.162-35-42-114.sslip.io · **Data:** SYNTHETIC, from the AEGIS simulator (the organizers provide no
 dataset, so it is the official source).
 
-> Status: Phases 1–6 and 9 complete and deployed; Phase 10 materials ready. Phases 7–8 extras deferred.
+> Status: Phases 1–6 and 9 complete and deployed; Phase 10 materials ready. Phase 8: Privacy Glass (M3) done;
+> other Phase 7–8 extras deferred.
 > Validation: `docs/VALIDATION_REPORT.md`. Demo: `docs/DEMO_SCRIPT.md`. Judge Q&A: `docs/judging/QA.md`.
 
 ## What it does (all verified live)
@@ -15,6 +16,8 @@ dataset, so it is the official source).
   - raw logs, secrets and real names stay on the collector
   - **0 leaks** across all SaaS tables
   - collector ledger SHA-256 equals what the SaaS stored, for **3,231 / 3,231** payloads
+  - **Privacy Glass** (collector-local page): raw → masked → exact outbound JSON + SHA-256 → live SaaS
+    receipt hash for any payload, plus a leak scan of every sent payload
 - **AI engine:**
   - robust baselines (caught a CPU change the static threshold missed: z ≈ 30)
   - trend early warning (30 s before the threshold breaks)
@@ -35,7 +38,7 @@ dataset, so it is the official source).
 
 ## Layout
 ```text
-apps/collector     Tier 1 local collector (FastAPI + SQLite WAL), loopback only: pipeline, privacy, ledger, sender, device alerts
+apps/collector     Tier 1 local collector (FastAPI + SQLite WAL), loopback only: pipeline, privacy, ledger, sender, device alerts, Privacy Glass
 apps/saas-api      Tier 2 SaaS (FastAPI + PostgreSQL/Supabase with RLS): ingest, health, AIOps, LLM, incidents, WebSocket
 apps/web           Operator dashboard (React + TS + Vite + Tailwind)
 packages/contracts Shared Pydantic contracts; outbound.py is the egress allow-list
@@ -50,8 +53,9 @@ docs/              requirements, architecture, security, decisions, test results
 ## Quick start (Windows PowerShell)
 ```powershell
 uv run python scripts/gen-secrets.py   # writes git-ignored .env files; prints no secrets
-./scripts/check.ps1                    # lint, types, 226 Python tests x2 (normal + CI parity), web tests, build
+./scripts/check.ps1                    # lint, types, 238 Python tests x2 (normal + CI parity), web tests, build
 ./scripts/demo.ps1                     # live demo: device webhook + collector (-> deployed SaaS) + timed scenarios
+./scripts/glass.ps1                    # open Privacy Glass (http://127.0.0.1:9100/glass); token to clipboard, not shown
 ```
 Local development stack: `./scripts/dev.ps1` (see `docs/runbooks/DEV_SETUP.md`). VPS operations: `docs/runbooks/VPS_DEPLOY.md`.
 

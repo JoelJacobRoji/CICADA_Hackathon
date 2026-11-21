@@ -14,7 +14,7 @@ Short answers to say out loud, each followed by **Show:** what to open as proof.
   - collector heartbeats
   - every source appears only as a keyed pseudonym (`src_…`)
 - **Stays:** raw events and log lines, usernames, IPs, hostnames, real source names, the pseudonym key, and secrets.
-- **Show:** the Security & privacy page; `docs/security/DATA_CLASSIFICATION.md`; the collector console `/local/raw` (masked) next to the SaaS Security signals page (counts only).
+- **Show:** **Privacy Glass** (raw next to masked next to the exact bytes that left); the Security & privacy page; the SaaS Security signals page (counts only).
 
 **How does the collector decide which fields are allowed to be sent?**
 - By an allow-list in code. Outbound payloads are built only from typed contracts (`packages/contracts/.../outbound.py`, Pydantic with `extra="forbid"`).
@@ -29,7 +29,7 @@ Four layers:
 4. A **hash-chained egress ledger** records every payload that left.
 
 Live result: fake secrets and all 9 real source names were searched across every SaaS table, including incidents and LLM prompts: **0 leaks**.
-- **Show:** S1 in the demo; `phase9_e2e_verify.json`.
+- **Show:** Privacy Glass → "Run leak scan" (S1 runs at +30 s in the demo); `phase9_e2e_verify.json`.
 
 **How are collectors authenticated and data encrypted?**
 - Each collector has its own bearer token. The SaaS stores only its SHA-256, and the token is bound to one tenant and one region: a Mumbai token gets 401 in Frankfurt.
@@ -38,10 +38,14 @@ Live result: fake secrets and all 9 real source names were searched across every
 - **Show:** `phase9_security_validation.json`, checks C1–C4 and R1–R2.
 
 **Can you open the egress proof panel and show the last payload?**
-- The collector's local console API shows every ledgered payload with its exact JSON and SHA-256 (`/local/egress`, `/local/egress/{payload_id}`).
-- The SaaS receipt for the same payload ID shows the SHA-256 it computed from what it received. They are equal for **3,231 / 3,231** payloads.
-- A visual side-by-side "Privacy Glass" panel is **not built yet** (deferred). We show the API output instead.
-- **Show:** `http://127.0.0.1:9100/docs` → `/local/egress` (local admin token), then the dashboard receipt `/api/v1/receipts/{id}`.
+- Yes: **Privacy Glass**, on the collector at `http://127.0.0.1:9100/glass` (local only; `./scripts/glass.ps1` opens it and puts the admin token on the clipboard without showing it).
+- For one payload it shows four columns:
+  1. the raw records (local only), with usernames, IPs and real host names highlighted
+  2. the same records masked, with finding tags
+  3. the exact ledgered outbound JSON, its SHA-256, and the hash recomputed from the stored bytes
+  4. the SaaS receipt: the SHA-256 the SaaS computed on arrival, fetched live over the collector's outbound connection (hash only, own payloads only)
+- Automatic **leak check**: every sensitive value from column 1 is searched for in column 3. A **leak scan** does the same across every ledgered payload, for every local record where a secret was found.
+- **Show:** click "Latest security summary" (S3), then "Run leak scan" (S1 secrets). Fleet-wide proof: **3,231 / 3,231** hashes equal (`phase9_e2e_verify.json`).
 
 ## AIOps and operations
 

@@ -29,7 +29,7 @@ log = structlog.get_logger("collector.glass")
 _BENIGN = {"failure", "success", "error", "ok", "true", "false", "info", "warning"}
 _TOKEN = re.compile(r"[^\s=:,;\"'()\[\]{}]{6,}")
 _RAW_LIMIT = 200
-_SCAN_PAYLOADS = 20_000
+_SCAN_PAYLOADS = 200_000  # ~0.7 s per 20k payloads measured live; whole demo sessions fit
 
 
 def _sha(text: str) -> str:

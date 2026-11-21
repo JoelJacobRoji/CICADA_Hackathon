@@ -14,7 +14,7 @@ Judging phase key: J1 Problem & Ideation (10) · J2 Architecture (25) · J3 Prot
 |---|---|---|---|---|---|---|---|
 | M1 | Real-time targets measured from timestamps on the telemetry stream | §2, §3 | `apps/web` latency probe, `apps/saas-api/metrics`, `tests/performance` | `docs/judging/evidence/latency_report.json` (P95, n, method) | J3 (10 marks), J4 | 7, 9 | **TESTED (live)**: raw event -> SaaS p95 5.2 s (n=13,079), `docs/judging/evidence/phase9_targets.json`; browser-render leg not instrumented |
 | M2 | Same organizer-provided simulated telemetry stream | §3 | `apps/collector/adapters` | Adapter ingests official stream sample; schema validation report | J3 | 3 → final integration | **RESOLVED BY ORGANIZERS (2026-11-20): no dataset will be provided; teams use their own synthetic data.** The AEGIS simulator (schema-compatible, scenario-injectable, labelled SIMULATED) is the official data source. |
-| M3 | Egress proof panel: exactly what each payload contained before leaving | §2, §3 | `apps/collector/egress`, `apps/web` Privacy Glass | Ledger entry hash == SaaS-received hash for chosen payload_id | J3, J4 | 3, 8 | **PARTIAL**: proof TESTED live (3,231/3,231 ledger SHA-256 == SaaS SHA-256, `docs/judging/evidence/phase9_e2e_verify.json`; ledger + receipts APIs); Privacy Glass UI panel DEFERRED (Phase 8) |
+| M3 | Egress proof panel: exactly what each payload contained before leaving | §2, §3 | `apps/collector` Privacy Glass (`glass.py`, `/glass`), SaaS collector receipt endpoint | Ledger entry hash == SaaS-received hash for chosen payload_id | J3, J4 | 3, 8 | **TESTED (live)**: Privacy Glass shows raw → masked → exact outbound JSON + SHA-256 → live SaaS receipt; production check: hash match for security, metric and topology payloads, 0 sensitive values in outbound, leak scan 0 hits (`phase8_glass_live.json`); 9 collector + 2 SaaS tests incl. a planted-leak negative control; fleet-wide 3,231/3,231 (`phase9_e2e_verify.json`) |
 
 ## 2. Core architecture & data protection
 
@@ -100,7 +100,7 @@ Judging phase key: J1 Problem & Ideation (10) · J2 Architecture (25) · J3 Prot
 | Payload schema and allow-list mechanism | `docs/architecture/METADATA_SCHEMA.md` |
 | Behaviour when SaaS unreachable; duplicates | `docs/architecture/RELIABILITY.md` |
 | Tenant isolation approach | `docs/security/THREAT_MODEL.md §4` |
-| Live raw-vs-redacted side by side | Collector local console `/local/raw` (masked) vs reveal; Privacy Glass UI deferred (Phase 8) |
+| Live raw-vs-redacted side by side | Privacy Glass (`http://127.0.0.1:9100/glass`): raw and masked side by side, plus the exact bytes that left |
 | Timestamps proving targets | `docs/requirements/MEASUREMENT_PLAN.md` → Phase 7/9 reports |
 | Forced outage, IDs compared | `scripts/scenarios/s2_outage` (Phase 7) |
 | Egress log for a specific payload | Privacy Glass / ledger API |

@@ -11,12 +11,16 @@ simulator is the official data source, and the banner on every page says so.
 2. Sign in to the dashboard in a browser and open the **Overview**.
 3. Run `./scripts/demo.ps1` at **T-2 min** so baselines have learned (they need 60 s or more) before you
    reach the AI part. Three windows open: device webhook, collector, simulator.
+4. Run `./scripts/glass.ps1`: it opens **Privacy Glass** (`http://127.0.0.1:9100/glass`) and copies the
+   local admin token to the clipboard without showing it. Paste it into **Unlock** before the judges look
+   at the screen. The clipboard is cleared after 90 s.
 
-Timeline after `demo.ps1` starts (verified end-to-end in the simulated harness: 3 separate incidents):
+Timeline after `demo.ps1` starts (system test `test_demo_timeline_s1_s3_s5_s6_gives_exactly_three_incidents`: exactly 3 incidents):
 
 | t | Scenario | What appears |
 |---|---|---|
 | 0–60 s | normal traffic | sources turn Excellent; baselines learn |
+| +30 s | **S1** raw app log with fake secrets on SRV_001 | nothing in the SaaS (by design); visible in Privacy Glass |
 | +75 s | **S3** 25 failed SSH logins on SRV_002 | P2 "Repeated failed logins" incident (counts only) |
 | +240 s | **S5** CPU on SRV_002 → ~80 % (static threshold is 85 %) | P2 "Baseline deviation": caught only by the AI baseline |
 | +500 s | **S6** NET_001 loss + latency, APP_001/APP_002 degrade 20 s later | **18 alerts → 1 P1 incident**, probable cause NET_001 |
@@ -47,6 +51,18 @@ Timeline after `demo.ps1` starts (verified end-to-end in the simulated harness: 
 - Switch to the **device webhook** window. The same incident arrived on the device, **with real names**
   (NET_001, APP_001). The collector pulled it over its outbound connection and re-identified it locally.
   The SaaS only ever stored `src_…` pseudonyms (verified in the database: 0 real names).
+
+## 3b. Privacy Glass: what exactly left (2 min)
+Switch to the **Privacy Glass** tab (already unlocked).
+1. Click **Latest security summary** (the S3 burst). Walk left to right:
+   - **1 Raw**: the SSH log lines with `admin`, `10.20.30.40` and `SRV_002`, highlighted. They stay on this laptop.
+   - **2 Masked**: the same lines scrubbed, with finding tags (`ipv4`, `field:user`).
+   - **3 What left**: the exact JSON: a `src_…` pseudonym and counts only (`failure_count`, `distinct_user_count`), plus its SHA-256.
+   - **4 SaaS receipt**: the SHA-256 the SaaS computed when it received the payload, fetched live. **✓ Hashes match.**
+   - The verdict strip on top says **No sensitive value left** and how many values were checked.
+2. Click **Run leak scan**: it takes the S1 log with the fake password, API key, JWT, AWS key, email and
+   IP, and searches **every** payload this collector ever sent: **0 leaks**. Raw and masked are shown side by side.
+3. Say: "This page is served only on the collector. The SaaS has no route to column 1; only column 3 was transmitted."
 
 ## 4. Security (2 min)
 - Open **Security & privacy**: 5 live checks pass (HTTPS/HSTS, encrypted WebSocket, httpOnly session,
@@ -84,4 +100,4 @@ Timeline after `demo.ps1` starts (verified end-to-end in the simulated harness: 
 ## Honest limits (if asked)
 - Single SaaS instance: in-memory WebSocket hub, health and AIOps engines (K18, K30).
 - The Gemini free tier has no data-processing agreement, so it is used only for ap-south and only with pseudonymous metadata.
-- Not built yet: Phase 7–8 features (reliability proof, Privacy glass, Safe Action Simulator).
+- Not built yet: Safe Action Simulator and the out-of-order replay scenario (Phase 7–8).

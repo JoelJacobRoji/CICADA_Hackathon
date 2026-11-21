@@ -74,10 +74,10 @@ The production SaaS was **not** stopped: that was blocked as too disruptive. Ins
 - **Bundle hygiene:** the 711 kB dashboard bundle contains no keys, tokens or database URLs.
 
 ## 5. Requirements matrix (`docs/requirements/REQUIREMENTS_MATRIX.md`)
-45 rows validated: **38 TESTED** (31 of them live in production) · **6 PARTIAL** · **1 DEFERRED**.
-The PARTIAL and DEFERRED rows are exactly the Phase 7–8 items postponed by user decision:
+45 rows validated: **39 TESTED** (32 of them live in production) · **5 PARTIAL** · **1 DEFERRED**.
+The PARTIAL and DEFERRED rows are exactly the Phase 7–8 items still postponed by user decision
+(Privacy Glass, M3, was built on 2026-11-21 and verified live: `phase8_glass_live.json`):
 - out-of-order scenario (S7/G4)
-- Privacy Glass panel (M3)
 - Safe Action Simulator (B5/S8/R1)
 - extra adapters (C3, partial by design)
 
