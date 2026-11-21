@@ -28,6 +28,15 @@ function Control({ title, children, verify }: { title: string; children: ReactNo
   )
 }
 
+// The real stages of the collector's egress path (apps/collector: pipeline, contracts, egress).
+const PIPELINE: { title: string; text: string; cloud?: boolean }[] = [
+  { title: 'Raw records', text: "Logs and metrics are stored in the collector's local SQLite store, with real names, users and IPs." },
+  { title: 'Masked locally', text: 'Secrets and identifiers are scrubbed in the local console copy; secret fingerprints are kept for the canary.' },
+  { title: 'Allow-list contract', text: 'Only typed, allow-listed fields (summaries, counts, edges) can be serialised; sources become src_ pseudonyms.' },
+  { title: 'Canary + ledger', text: 'Each payload is scanned for credentials and known secrets, blocked on a match, then hash-chained in the egress ledger.' },
+  { title: 'Cloud ingest', text: 'The SaaS re-validates the same contract, stores the SHA-256 it received and isolates the tenant with row-level security.', cloud: true },
+]
+
 export function Trust() {
   const { me } = useAuth()
   const live = useLiveStatus()
@@ -43,6 +52,24 @@ export function Trust() {
           checks from this browser session.
         </p>
       </div>
+
+      <Card title="How data leaves the customer site">
+        <ol className="plain pipeline" aria-label="Egress pipeline, in order">
+          {PIPELINE.map((st, i) => (
+            <li key={st.title} className={`stage ${st.cloud ? 'stage-cloud' : 'stage-local'}`}>
+              <div className="stage-num">Stage {i + 1}</div>
+              <div className="stage-title">{st.title}</div>
+              <span className="stage-where">{st.cloud ? 'AEGIS cloud' : 'Customer site only'}</span>
+              <p>{st.text}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="boundary">
+          Stages 1 to 4 run on the collector inside the customer network; only the output of stage 4 crosses
+          the boundary. Proof for any single payload (raw → masked → exact bytes sent → cloud hash):
+          <strong> Privacy Glass</strong>, served only on the collector at <code>127.0.0.1:9100/glass</code>.
+        </p>
+      </Card>
 
       <Card title="Live checks (this session)">
         <ul className="plain trust-list">

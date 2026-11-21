@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -103,6 +103,44 @@ describe('Overview', () => {
     await waitFor(() => expect(screen.getByText('CPU 91.0% is above the fair threshold of 85.0%')).toBeInTheDocument())
     expect(screen.getByText('1/1')).toBeInTheDocument() // collectors online
     expect(screen.getByText(/server src_c5f042/)).toBeInTheDocument() // pseudonymous ID only
+  })
+})
+
+describe('Overview key figures (KPI cards)', () => {
+  it('shows only API values: shares, incident counts by priority and noise ratio', async () => {
+    const health = { tenant: null, worst: [],
+      counts: { source: { Excellent: 6, Good: 2, Fair: 1, Poor: 1 }, collector: { Excellent: 1, Good: 0, Fair: 0, Poor: 1 } } }
+    mockFetch({
+      '/api/v1/health/summary': health,
+      '/api/v1/health/transitions': [],
+      '/api/v1/incidents': [],
+      '/api/v1/aiops/summary': { open_by_priority: { P1: 1, P2: 2, P3: 0 }, incidents_total: 4, alerts_total: 40,
+        alert_signals_total: 72, noise_reduction_ratio: 18, definition: '' },
+    })
+    const { container } = render(<MemoryRouter><Overview /></MemoryRouter>)
+    expect(await screen.findByText('P1 1 · P2 2 · P3 0')).toBeInTheDocument()
+    expect(screen.getByText('8/10')).toBeInTheDocument() // healthy = Excellent + Good
+    expect(screen.getByText('80%')).toBeInTheDocument()
+    expect(screen.getByText('1/2')).toBeInTheDocument() // collectors online
+    expect(screen.getByText('1 offline or failing')).toBeInTheDocument()
+    expect(screen.getByText('18 : 1')).toBeInTheDocument()
+    expect(screen.getByText('72 alert signals → 4 incidents')).toBeInTheDocument()
+    // Rings are decorative (the value is always text) and never counted as charts.
+    expect(container.querySelectorAll('.ring svg[aria-hidden="true"]').length).toBe(2)
+    expect(container.querySelectorAll('.kpis [role="img"]').length).toBe(0)
+  })
+
+  it('shows placeholders, not invented numbers, while incident data is unavailable', async () => {
+    const zero = { Excellent: 0, Good: 0, Fair: 0, Poor: 0 }
+    mockFetch({
+      '/api/v1/health/summary': { tenant: null, counts: { source: zero, collector: zero }, worst: [] },
+      '/api/v1/health/transitions': [],
+    })
+    const { container } = render(<MemoryRouter><Overview /></MemoryRouter>)
+    const view = within(container)
+    expect(await view.findByText('Healthy sources')).toBeInTheDocument()
+    expect(view.getAllByText('loading').length).toBe(2) // aiops summary unavailable (404 here)
+    expect(view.getByText('0/0')).toBeInTheDocument()
   })
 })
 

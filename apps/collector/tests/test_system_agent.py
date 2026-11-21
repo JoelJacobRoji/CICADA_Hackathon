@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import time
 
 from aegis_collector.adapters.system_agent import SystemAgent, tcp_probe
 from aegis_contracts.inbound import MetricEvent, parse_inbound
@@ -21,7 +22,8 @@ def _closed_port() -> int:
 def test_samples_are_valid_inbound_metrics():
     agent = SystemAgent(targets=[])
     first = asyncio.run(agent.sample())
-    second = asyncio.run(agent.sample())  # bandwidth needs two samples (byte-counter delta)
+    time.sleep(0.05)  # bandwidth = byte-counter delta / elapsed; Windows monotonic ticks ~15 ms
+    second = asyncio.run(agent.sample())
     events = [parse_inbound(e) for e in first + second]
     assert all(isinstance(e, MetricEvent) for e in events)
     metrics = {e.metric.value for e in events}
@@ -45,6 +47,7 @@ def test_unreachable_probe_target_reports_loss_not_latency():
 def test_agent_data_is_pseudonymised_on_egress(pipeline):
     agent = SystemAgent(targets=[])
     asyncio.run(agent.sample())
+    time.sleep(0.05)  # see above: the second sample must be a measurable time after the first
     accepted, rejected = pipeline.process("system_agent", asyncio.run(agent.sample()))
     assert accepted >= 4 and rejected == 0
     pipeline.flush(force=True)

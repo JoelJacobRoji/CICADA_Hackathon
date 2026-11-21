@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { STATES, type AiopsSummary, type HealthSummary, type IncidentRow, type LiveEvent, type Transition } from '../api/types'
 import { useApi } from '../api/useApi'
 import { Card, Empty, ErrorNote, Loading, Reasons, StatTile, TimeAgo } from '../components/common'
+import { Kpi, Ring, pct } from '../components/Kpi'
 import { PriorityBadge } from '../components/Priority'
 import { StateBadge, stateMeaning } from '../components/StateBadge'
 import { describeReason, kindLabel, shortId } from '../lib/format'
@@ -39,6 +40,12 @@ export function Overview() {
   const col = s.counts.collector
   const totalSrc = STATES.reduce((a, k) => a + src[k], 0)
   const totalCol = STATES.reduce((a, k) => a + col[k], 0)
+  const healthySrc = src.Excellent + src.Good
+  const srcShare = totalSrc ? healthySrc / totalSrc : null
+  const colUp = totalCol - col.Poor
+  const colShare = totalCol ? colUp / totalCol : null
+  const a = aiops.data
+  const openTotal = a ? a.open_by_priority.P1 + a.open_by_priority.P2 + a.open_by_priority.P3 : null
 
   return (
     <div className="stack">
@@ -46,6 +53,23 @@ export function Overview() {
         <h1>Operational overview</h1>
         <p className="muted">Health of every monitored source and collector in your tenant, updated live.</p>
       </div>
+
+      <section className="kpis" aria-label="Key figures">
+        <Kpi visual={<Ring share={srcShare} label={pct(srcShare)} />} label="Healthy sources"
+          value={totalSrc ? `${healthySrc}/${totalSrc}` : '—'} sub="Excellent or Good right now" to="/infrastructure" />
+        <Kpi visual={<Ring share={colShare} label={pct(colShare)} />} label="Collectors online"
+          value={`${colUp}/${totalCol}`}
+          sub={col.Poor ? `${col.Poor} offline or failing` : 'all reporting'} to="/fleet" alert={col.Poor > 0} />
+        <Kpi
+          visual={<span className={`kpi-badge${a?.open_by_priority.P1 ? ' kpi-badge-critical' : ''}`} aria-hidden="true">
+            {openTotal == null ? '…' : openTotal === 0 ? '✓' : '!'}</span>}
+          label="Active incidents" value={openTotal ?? '—'}
+          sub={a ? `P1 ${a.open_by_priority.P1} · P2 ${a.open_by_priority.P2} · P3 ${a.open_by_priority.P3}` : 'loading'}
+          to="/incidents" alert={!!a?.open_by_priority.P1} />
+        <Kpi visual={<span className="kpi-badge" aria-hidden="true">÷</span>} label="Alert noise reduction"
+          value={a?.noise_reduction_ratio ? `${a.noise_reduction_ratio} : 1` : '—'}
+          sub={a ? `${a.alert_signals_total} alert signals → ${a.incidents_total} incidents` : 'loading'} />
+      </section>
 
       <section className="hero card">
         <div>
@@ -60,8 +84,6 @@ export function Overview() {
             <StatTile key={k} label={<StateBadge state={k} size="sm" />} value={src[k]}
               sub={`of ${totalSrc} sources`} />
           ))}
-          <StatTile label="Collectors online" value={`${totalCol - col.Poor}/${totalCol}`}
-            sub={col.Poor ? `${col.Poor} offline or failing` : 'all reporting'} />
         </div>
       </section>
 
@@ -70,17 +92,6 @@ export function Overview() {
       )}
 
       <Card title="Open incidents" actions={<Link to="/incidents">Incident center →</Link>}>
-        {aiops.data && (
-          <p className="row">
-            <span><PriorityBadge p="P1" /> {aiops.data.open_by_priority.P1}</span>
-            <span><PriorityBadge p="P2" /> {aiops.data.open_by_priority.P2}</span>
-            <span><PriorityBadge p="P3" /> {aiops.data.open_by_priority.P3}</span>
-            <span className="muted">
-              noise reduction {aiops.data.noise_reduction_ratio ? `${aiops.data.noise_reduction_ratio} : 1` : '-'}
-              {' '}({aiops.data.alert_signals_total} alert signals → {aiops.data.incidents_total} incidents)
-            </span>
-          </p>
-        )}
         {!openInc.data ? <Loading /> : openInc.data.length === 0 ? (
           <Empty>No open incidents.</Empty>
         ) : (
