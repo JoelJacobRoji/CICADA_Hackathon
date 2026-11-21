@@ -99,6 +99,7 @@ def _collectors_of(change: Change) -> set[str]:
 class Store:
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._write_lock = threading.Lock()
         self._incidents: dict[uuid.UUID, Incident] = {}
         self._alerts: dict[uuid.UUID, Any] = {}
         self._notifications: list[dict[str, Any]] = []
@@ -151,89 +152,106 @@ class Store:
         for r in llm:
             groups[(r["region"], r["tenant_id"])]["l"].append(r)
         n_written = 0
-        for (region, tenant), g in groups.items():
-            try:
-                with tenant_connection(region, tenant) as c:
-                    for i in g["i"]:
-                        vals = dict(
-                            tenant_id=tenant,
-                            id=i.id,
-                            status=i.status,
-                            priority=i.priority,
-                            score=i.score,
-                            title=i.title,
-                            root_entity=i.root_entity,
-                            opened_at=i.opened_at,
-                            updated_at=i.updated_at,
-                            resolved_at=i.resolved_at,
-                            acked_at=i.acked_at,
-                            acked_by=i.acked_by,
-                            version=i.version,
-                            explanation=i.explanation,
-                        )
-                        st = pg_insert(incidents_t).values(**vals)
-                        c.execute(
-                            st.on_conflict_do_update(
-                                index_elements=["tenant_id", "id"],
-                                set_={
-                                    k: st.excluded[k] for k in vals if k not in ("tenant_id", "id")
-                                },
-                            )
-                        )
-                    for a in g["a"]:
-                        vals = dict(
-                            tenant_id=tenant,
-                            id=a.id,
-                            incident_id=a.incident_id,
-                            entity_type=a.entity_type,
-                            entity_id=a.entity_id,
-                            collector_id=a.collector_id,
-                            metric=a.metric,
-                            family=a.family,
-                            code=a.code,
-                            severity=a.severity,
-                            category=a.category,
-                            status=a.status,
-                            onset=a.onset,
-                            first_seen=a.first_seen,
-                            last_seen=a.last_seen,
-                            resolved_at=a.resolved_at,
-                            occurrences=a.occurrences,
-                            dedup_hits=a.dedup_hits,
-                            evidence=a.evidence,
-                        )
-                        st = pg_insert(alerts_t).values(**vals)
-                        c.execute(
-                            st.on_conflict_do_update(
-                                index_elements=["tenant_id", "id"],
-                                set_={
-                                    k: st.excluded[k] for k in vals if k not in ("tenant_id", "id")
-                                },
-                            )
-                        )
-                    for n in g["n"]:
-                        c.execute(
-                            pg_insert(notifications_t)
-                            .values(**{k: v for k, v in n.items() if k != "region"})
-                            .on_conflict_do_nothing()
-                        )
-                    for r in g["l"]:
-                        c.execute(
-                            pg_insert(llm_explanations_t)
-                            .values(**{k: v for k, v in r.items() if k != "region"})
-                            .on_conflict_do_nothing()
-                        )
-                n_written += sum(len(v) for v in g.values())
-            except Exception as exc:  # noqa: BLE001 - re-queue: never silently lose incidents
-                log.error("aiops_persist_failed", error=type(exc).__name__)
-                with self._lock:
-                    for i in g["i"]:
-                        self._incidents.setdefault(i.id, i)
-                    for a in g["a"]:
-                        self._alerts.setdefault(a.id, a)
-                    self._notifications = g["n"] + self._notifications
-                    self._llm = g["l"] + self._llm
+        # One writer at a time (background tick vs. read-triggered flushes), so an older snapshot
+        # can never be committed after a newer one. The swap above stays outside this lock.
+        with self._write_lock:
+            for (region, tenant), g in groups.items():
+                try:
+                    with tenant_connection(region, tenant) as c:
+                        _write_group(c, tenant, g)
+                    n_written += sum(len(v) for v in g.values())
+                except Exception as exc:  # noqa: BLE001 - re-queue: never silently lose incidents
+                    log.error("aiops_persist_failed", error=type(exc).__name__)
+                    with self._lock:
+                        for i in g["i"]:
+                            self._incidents.setdefault(i.id, i)
+                        for a in g["a"]:
+                            self._alerts.setdefault(a.id, a)
+                        self._notifications = g["n"] + self._notifications
+                        self._llm = g["l"] + self._llm
         return n_written
+
+
+# Rows per INSERT statement: bounded statement size, still ~1 round trip per table per flush.
+FLUSH_CHUNK = 500
+
+
+def _chunks(rows: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    return [rows[i : i + FLUSH_CHUNK] for i in range(0, len(rows), FLUSH_CHUNK)]
+
+
+def _incident_row(tenant: uuid.UUID, i: Incident) -> dict[str, Any]:
+    return dict(
+        tenant_id=tenant,
+        id=i.id,
+        status=i.status,
+        priority=i.priority,
+        score=i.score,
+        title=i.title,
+        root_entity=i.root_entity,
+        opened_at=i.opened_at,
+        updated_at=i.updated_at,
+        resolved_at=i.resolved_at,
+        acked_at=i.acked_at,
+        acked_by=i.acked_by,
+        version=i.version,
+        explanation=i.explanation,
+    )
+
+
+def _alert_row(tenant: uuid.UUID, a: Any) -> dict[str, Any]:
+    return dict(
+        tenant_id=tenant,
+        id=a.id,
+        incident_id=a.incident_id,
+        entity_type=a.entity_type,
+        entity_id=a.entity_id,
+        collector_id=a.collector_id,
+        metric=a.metric,
+        family=a.family,
+        code=a.code,
+        severity=a.severity,
+        category=a.category,
+        status=a.status,
+        onset=a.onset,
+        first_seen=a.first_seen,
+        last_seen=a.last_seen,
+        resolved_at=a.resolved_at,
+        occurrences=a.occurrences,
+        dedup_hits=a.dedup_hits,
+        evidence=a.evidence,
+    )
+
+
+def _upsert(c: Any, table: Any, rows: list[dict[str, Any]], newer_col: str) -> None:
+    """Multi-row upsert. Rows are unique per id (the store dedups by id). An existing row is
+    replaced only by an equal-or-newer snapshot (`newer_col`), so a stale write cannot win."""
+    for chunk in _chunks(rows):
+        st = pg_insert(table).values(chunk)
+        c.execute(
+            st.on_conflict_do_update(
+                index_elements=["tenant_id", "id"],
+                set_={k: st.excluded[k] for k in chunk[0] if k not in ("tenant_id", "id")},
+                where=table.c[newer_col] <= st.excluded[newer_col],
+            )
+        )
+
+
+def _insert_new(c: Any, table: Any, rows: list[dict[str, Any]]) -> None:
+    for chunk in _chunks([{k: v for k, v in r.items() if k != "region"} for r in rows]):
+        c.execute(pg_insert(table).values(chunk).on_conflict_do_nothing())
+
+
+def _write_group(c: Any, tenant: uuid.UUID, g: dict[str, list]) -> None:
+    """Persist one tenant's pending changes: incidents before alerts (alerts reference them)."""
+    if g["i"]:
+        _upsert(c, incidents_t, [_incident_row(tenant, i) for i in g["i"]], "version")
+    if g["a"]:
+        _upsert(c, alerts_t, [_alert_row(tenant, a) for a in g["a"]], "last_seen")
+    if g["n"]:
+        _insert_new(c, notifications_t, g["n"])
+    if g["l"]:
+        _insert_new(c, llm_explanations_t, g["l"])
 
 
 store = Store()
