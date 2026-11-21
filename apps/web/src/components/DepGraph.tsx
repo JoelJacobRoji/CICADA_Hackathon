@@ -86,7 +86,8 @@ export function DepGraph({ edges, affected, root }: { edges: TopologyEdge[]; aff
     g.nodes.map((n) => `${shortId(n.id)} ${ROLE_TEXT[n.role]}`).join('; ')
   return (
     <figure className="depgraph" aria-label={label}>
-      <svg viewBox={`0 0 ${g.width} ${g.height}`} width="100%" style={{ maxHeight: 420 }} aria-hidden="true" focusable="false">
+      <svg viewBox={`0 0 ${g.width} ${g.height}`} width="100%" aria-hidden="true" focusable="false"
+        style={{ maxHeight: 420, maxWidth: g.width * 1.25, display: 'block', margin: '0 auto' }}>
         <defs>
           <marker id="dg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" className="dg-arrow" />

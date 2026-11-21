@@ -201,6 +201,7 @@ a.pill:hover { text-decoration: none; border-color: var(--accent); }
 .table th { text-align: left; font-weight: 600; color: var(--ink-secondary); border-bottom: 1px solid var(--grid); padding: 8px; white-space: nowrap; }
 .table td { border-bottom: 1px solid var(--border); padding: 8px; vertical-align: top; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table th.num { text-align: right; }
 
 /* metrics */
 .filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
