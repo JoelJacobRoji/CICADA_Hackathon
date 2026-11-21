@@ -356,3 +356,27 @@ describe('Investigation view', () => {
     expect(view.getByText('Blast radius · 1')).toBeInTheDocument()
   })
 })
+
+// ---------------------------------------------------------------- UI upgrade phase 1: theme
+describe('Theme', () => {
+  it('defaults to dark, persists the choice, ignores invalid stored values and supports system', async () => {
+    const mem = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+      removeItem: (k: string) => void mem.delete(k),
+    })
+    const { applyTheme, storedTheme } = await import('./lib/theme')
+    localStorage.removeItem('aegis-theme')
+    expect(storedTheme()).toBe('dark')
+    localStorage.setItem('aegis-theme', 'neon')
+    expect(storedTheme()).toBe('dark')
+    applyTheme('light')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+    expect(storedTheme()).toBe('light')
+    applyTheme('system')
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
+    applyTheme('dark')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark')
+  })
+})

@@ -5,6 +5,8 @@ import { STATES } from '../api/types'
 import { useApi } from '../api/useApi'
 import { useAuth } from '../auth/auth'
 import { live, useLiveStatus } from '../live/live'
+import { applyTheme, storedTheme, type Theme } from '../lib/theme'
+import { ShieldMark } from './Brand'
 import { useNow } from './common'
 
 type NavItem = { to: string; label: string; badge?: 'incidents' }
@@ -43,26 +45,11 @@ const PAGE_NAMES: [RegExp, string, string][] = [
 const DATA_SOURCE = import.meta.env.VITE_DATA_SOURCE_LABEL as string | undefined
 
 function ThemeToggle() {
-  const [theme, setTheme] = useState<string>(() => {
-    try {
-      return localStorage.getItem('aegis-theme') ?? 'system'
-    } catch {
-      return 'system'
-    }
-  })
-  useEffect(() => {
-    const root = document.documentElement
-    if (theme === 'system') root.removeAttribute('data-theme')
-    else root.setAttribute('data-theme', theme)
-    try {
-      localStorage.setItem('aegis-theme', theme)
-    } catch {
-      /* storage unavailable: theme still applies for this session */
-    }
-  }, [theme])
-  const next = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system'
+  const [theme, setTheme] = useState<Theme>(storedTheme)
+  useEffect(() => applyTheme(theme), [theme])
+  const next: Theme = theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark'
   return (
-    <button className="btn btn-ghost btn-pill" onClick={() => setTheme(next)} title="Theme: system, light or dark">
+    <button className="btn btn-ghost btn-pill" onClick={() => setTheme(next)} title="Theme: dark, light or system">
       Theme: {theme}
     </button>
   )
@@ -111,7 +98,7 @@ export function Layout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">A</span>
+          <span className="brand-mark"><ShieldMark /></span>
           <span>
             <span className="brand-name">AEGIS</span>
             <span className="brand-sub">Privacy-first observability</span>

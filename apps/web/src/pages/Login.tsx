@@ -1,7 +1,17 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useAuth } from '../auth/auth'
+import { ShieldMark } from '../components/Brand'
 
-export function Login() {
+function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+  return (
+    <li className="hero-step">
+      <span className="hero-step-n" aria-hidden="true">{n}</span>
+      <span><strong>{title}</strong><span className="hero-step-text">{children}</span></span>
+    </li>
+  )
+}
+
+export function Login({ heroArt }: { heroArt?: ReactNode }) {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,6 +35,19 @@ export function Login() {
 
   return (
     <main className="login">
+      <section className="login-hero" aria-label="About AEGIS">
+        <div className="login-hero-brand">
+          <span className="brand-mark brand-mark-lg"><ShieldMark size={26} /></span>
+          <span className="login-hero-name">AEGIS</span>
+        </div>
+        {heroArt && <div className="login-hero-art">{heroArt}</div>}
+        <p className="login-hero-tag">Observe everything. Expose nothing. Explain every incident.</p>
+        <ol className="hero-steps">
+          <Step n={1} title="Raw stays local">Logs, users, IPs and secrets never leave the collector.</Step>
+          <Step n={2} title="Metadata only">Allow-listed summaries with pseudonymous IDs, hash-verified.</Step>
+          <Step n={3} title="Explained incidents">Correlated by dependency, with a grounded AI explanation.</Step>
+        </ol>
+      </section>
       <form className="login-card" onSubmit={submit} aria-labelledby="login-title">
         <p className="eyebrow">AEGIS · operator console</p>
         <h1 id="login-title">Sign in</h1>

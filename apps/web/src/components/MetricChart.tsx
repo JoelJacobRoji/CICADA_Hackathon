@@ -8,6 +8,7 @@ import { GridComponent, MarkLineComponent, TooltipComponent } from 'echarts/comp
 import { SVGRenderer } from 'echarts/renderers'
 import type { MetricPoint } from '../api/types'
 import { fmtValue, metricLabel } from '../lib/format'
+import { useThemeVersion } from '../lib/theme'
 
 echarts.use([LineChart, GridComponent, TooltipComponent, MarkLineComponent, SVGRenderer])
 
@@ -39,6 +40,7 @@ export function MetricChart({
 }) {
   const el = useRef<HTMLDivElement>(null)
   const chart = useRef<echarts.ECharts | null>(null)
+  const themeV = useThemeVersion() // repaint from the CSS tokens when the theme changes
 
   // Honest gaps: if consecutive windows are more than GAP_MS apart there was NO data in between,
   // so the line is broken (a null point) instead of drawing a slope that never happened.
@@ -82,6 +84,7 @@ export function MetricChart({
         // No draw-in animation: data refreshes every 2 s and re-animating the whole line each
         // time is distracting (and made screenshots show half-drawn lines).
         animation: false,
+        textStyle: { fontFamily: token('--font-sans') },
         grid: { left: 44, right: 16, top: 14, bottom: 24 },
         xAxis: {
           type: 'time',
@@ -145,7 +148,7 @@ export function MetricChart({
       },
       { notMerge: true },
     )
-  }, [data, metric, unit, thresholds, title])
+  }, [data, metric, unit, thresholds, title, themeV])
 
   return (
     <div
