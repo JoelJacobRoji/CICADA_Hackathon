@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text, update
+from sqlalchemy import literal, select, text, union_all, update
 from starlette.concurrency import run_in_threadpool
 
 from . import audit
@@ -21,7 +21,14 @@ from .auth.operator import (
 )
 from .config import get_settings
 from .db import tenant_connection
-from .repo import collectors, metric_summaries, security_summaries, topology_edges, users
+from .repo import (
+    collectors,
+    ingest_receipts,
+    metric_summaries,
+    security_summaries,
+    topology_edges,
+    users,
+)
 
 
 class LoginIn(BaseModel):
@@ -151,6 +158,80 @@ def build_router() -> APIRouter:
     def topology(op: Operator = Depends(current_operator)) -> list[dict[str, Any]]:
         with tenant_connection(op.region, op.tenant_id) as conn:
             return _rows(conn.execute(select(topology_edges)))
+
+    @r.get("/receipts")
+    def receipts(
+        op: Operator = Depends(current_operator),
+        limit: int = Query(50, ge=1, le=200),
+        batches: int = Query(20, ge=0, le=100),
+    ) -> dict[str, Any]:
+        """Egress receipts: the newest payloads with the SHA-256 the SaaS computed on arrival,
+        plus the newest ingest batches. One transaction, two statements (index-backed)."""
+        m, s, t = metric_summaries, security_summaries, topology_edges
+        parts = [
+            select(
+                m.c.payload_id,
+                literal("metric_summary").label("kind"),
+                m.c.collector_id,
+                m.c.source_pid,
+                m.c.metric.label("detail"),
+                m.c.window_end,
+                m.c.received_at,
+                m.c.late,
+                m.c.payload_sha256,
+            )
+            .where(m.c.tenant_id == op.tenant_id)
+            .order_by(m.c.window_end.desc())
+            .limit(limit),
+            select(
+                s.c.payload_id,
+                literal("security_summary").label("kind"),
+                s.c.collector_id,
+                s.c.source_pid,
+                s.c.summary_code.label("detail"),
+                s.c.window_end,
+                s.c.received_at,
+                s.c.late,
+                s.c.payload_sha256,
+            )
+            .where(s.c.tenant_id == op.tenant_id)
+            .order_by(s.c.window_end.desc())
+            .limit(limit),
+            select(
+                t.c.payload_id,
+                literal("topology_edge").label("kind"),
+                t.c.collector_id,
+                t.c.from_pid.label("source_pid"),
+                t.c.to_pid.label("detail"),
+                t.c.received_at.label("window_end"),
+                t.c.received_at,
+                literal(False).label("late"),
+                t.c.payload_sha256,
+            )
+            .where(t.c.tenant_id == op.tenant_id)
+            .order_by(t.c.received_at.desc())
+            .limit(limit),
+        ]
+        u = union_all(*(p.subquery().select() for p in parts)).subquery()
+        q = select(u).order_by(u.c.received_at.desc()).limit(limit)
+        b = (
+            select(
+                ingest_receipts.c.received_at,
+                ingest_receipts.c.collector_id,
+                ingest_receipts.c.batch_id,
+                ingest_receipts.c.accepted,
+                ingest_receipts.c.duplicate,
+                ingest_receipts.c.rejected,
+                ingest_receipts.c.body_sha256,
+            )
+            .where(ingest_receipts.c.tenant_id == op.tenant_id)
+            .order_by(ingest_receipts.c.received_at.desc())
+            .limit(batches)
+        )
+        with tenant_connection(op.region, op.tenant_id) as conn:
+            payloads = _rows(conn.execute(q))
+            recent = _rows(conn.execute(b)) if batches else []
+        return {"payloads": payloads, "batches": recent}
 
     @r.get("/receipts/{payload_id}")
     def receipt(payload_id: uuid.UUID, op: Operator = Depends(current_operator)) -> dict[str, Any]:

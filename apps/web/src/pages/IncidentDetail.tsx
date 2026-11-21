@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
-import type { AiExplanation, AlertRow, IncidentDetail as Detail, LiveEvent } from '../api/types'
+import type { AiExplanation, AlertRow, IncidentDetail as Detail, LiveEvent, TopologyEdge } from '../api/types'
 import { useApi } from '../api/useApi'
 import { Card, Empty, ErrorNote, Loading, TimeAgo } from '../components/common'
+import { DepGraph } from '../components/DepGraph'
 import { PriorityBadge, STRENGTH_ICON, StatusPill } from '../components/Priority'
 import { fmtValue, kindLabel, metricLabel, shortId, utc } from '../lib/format'
 import { useLiveEvents } from '../live/live'
@@ -116,6 +117,7 @@ const isMine = (e: LiveEvent) => e.type === 'incident' || e.type === 'incident_a
 export function IncidentDetail() {
   const { id } = useParams()
   const q = useApi<Detail>(`/api/v1/incidents/${id}`, 10000)
+  const topo = useApi<TopologyEdge[]>('/api/v1/topology', 60000)
   const [ackErr, setAckErr] = useState<string | null>(null)
   const reload = q.reload
   const onEvent = useCallback(
@@ -132,6 +134,7 @@ export function IncidentDetail() {
   const x = d.explanation
   const pc = x.probable_cause
   const alertCode = Object.fromEntries(d.alerts.map((a) => [a.id, `${shortId(a.entity_id)} ${a.code}`]))
+  const affected = Array.from(new Set(d.alerts.map((a) => a.entity_id)))
 
   const ack = async () => {
     setAckErr(null)
@@ -162,25 +165,56 @@ export function IncidentDetail() {
 
       {x.closed_reason && <div className="data-banner" role="note">{x.closed_reason}</div>}
 
-      <div className="grid-3">
-        <Card title="Probable cause">
-          <p className="big">{entityLink(pc.entity, pc.entity_kind)}</p>
-          <p className="muted">{pc.status === 'determined' ? pc.basis : `Undetermined: ${pc.basis}`}</p>
-        </Card>
-        <Card title="Evidence strength">
-          <p className="big"><span aria-hidden="true">{STRENGTH_ICON[x.evidence_strength.level]}</span> {x.evidence_strength.level}</p>
-          <ul className="muted small plain">{x.evidence_strength.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-        </Card>
-        <Card title={`Priority ${x.priority.label} · score ${x.priority.score}`}>
-          <table className="table compact" aria-label="Priority score components">
-            <tbody>
-              {Object.entries(x.priority.components).map(([k, v]) => (
-                <tr key={k}><td>{COMPONENT[k] ?? k}</td><td className="num">{v}</td></tr>
+      <div className="investigate">
+        <div className="stack">
+          <Card title={`Blast radius · ${affected.length}`}>
+            <ul className="plain blast">
+              {affected.map((e) => (
+                <li key={e}>
+                  {entityLink(e)}
+                  <span className={`chip${e === pc.entity ? ' chip-root' : ''}`}>
+                    {e === pc.entity ? 'probable cause' : 'affected'}
+                  </span>
+                  <span className="muted small">
+                    {d.alerts.filter((a) => a.entity_id === e).length} signal(s)
+                  </span>
+                </li>
               ))}
-            </tbody>
-          </table>
-          <p className="muted small">{x.priority.note}</p>
+            </ul>
+          </Card>
+          <Card title="Evidence strength">
+            <p className="big"><span aria-hidden="true">{STRENGTH_ICON[x.evidence_strength.level]}</span> {x.evidence_strength.level}</p>
+            <ul className="muted small plain">{x.evidence_strength.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+          </Card>
+          <Card title={`Priority ${x.priority.label} · score ${x.priority.score}`}>
+            <table className="table compact" aria-label="Priority score components">
+              <tbody>
+                {Object.entries(x.priority.components).map(([k, v]) => (
+                  <tr key={k}><td>{COMPONENT[k] ?? k}</td><td className="num">{v}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="muted small">{x.priority.note}</p>
+          </Card>
+        </div>
+
+        <Card title="Dependency graph" actions={<span className="muted small">reported by the collectors</span>}>
+          {topo.error && !topo.data ? <ErrorNote error={topo.error} onRetry={topo.reload} />
+            : !topo.data ? <Loading label="Loading dependencies" />
+              : <DepGraph edges={topo.data} affected={affected} root={pc.entity} />}
         </Card>
+
+        <div className="stack">
+          <Card title="Probable cause">
+            <p className="big">{entityLink(pc.entity, pc.entity_kind)}</p>
+            <p className="muted">{pc.status === 'determined' ? pc.basis : `Undetermined: ${pc.basis}`}</p>
+          </Card>
+          <Card title="Uncertainty">
+            {x.uncertainty.length === 0 ? <Empty>No open uncertainties recorded.</Empty> : (
+              <ul className="reasons">{x.uncertainty.map((u) => <li key={u}>{u}</li>)}</ul>
+            )}
+          </Card>
+        </div>
       </div>
 
       <Card title={<>AI explanation <span className="chip">LLM, grounded</span></>}>
@@ -228,24 +262,17 @@ export function IncidentDetail() {
         </div>
       </Card>
 
-      <div className="grid-2">
-        <Card title="How the signals were grouped">
-          <ol className="timeline plain">
-            {x.correlation.map((c, i) => (
-              <li key={i}><span className="reason-code">{c.rule}</span> <span>{c.detail}</span></li>
-            ))}
-          </ol>
-          <p className="muted small">
-            C-SRC same source · C-TOPO reported dependency path · C-SITE several network alerts from one
-            collector · NEW opened a new incident. Methods used: {x.detection_methods.join(', ')}.
-          </p>
-        </Card>
-        <Card title="Uncertainty">
-          {x.uncertainty.length === 0 ? <Empty>No open uncertainties recorded.</Empty> : (
-            <ul className="reasons">{x.uncertainty.map((u) => <li key={u}>{u}</li>)}</ul>
-          )}
-        </Card>
-      </div>
+      <Card title="How the signals were grouped">
+        <ol className="timeline plain">
+          {x.correlation.map((c, i) => (
+            <li key={i}><span className="reason-code">{c.rule}</span> <span>{c.detail}</span></li>
+          ))}
+        </ol>
+        <p className="muted small">
+          C-SRC same source · C-TOPO reported dependency path · C-SITE several network alerts from one
+          collector · NEW opened a new incident. Methods used: {x.detection_methods.join(', ')}.
+        </p>
+      </Card>
 
       <Card title="Device alerts" actions={<span className="muted small">pulled by the collector over its outbound connection; names re-identified locally</span>}>
         {d.notifications.length === 0 ? <Empty>No device notifications yet.</Empty> : (

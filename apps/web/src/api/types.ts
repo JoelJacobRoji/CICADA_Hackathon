@@ -249,3 +249,36 @@ export interface AiopsSummary {
   since?: string
   definition: string
 }
+
+export interface PayloadReceipt {
+  payload_id: string
+  kind: 'metric_summary' | 'security_summary' | 'topology_edge'
+  collector_id: string
+  source_pid: string | null
+  detail: string | null
+  window_end: string
+  received_at: string
+  late: boolean | null
+  payload_sha256: string | null
+}
+
+export interface IngestBatch {
+  received_at: string
+  collector_id: string
+  batch_id: string
+  accepted: number
+  duplicate: number
+  rejected: number
+  body_sha256: string | null
+}
+
+export interface ReceiptsPage {
+  payloads: PayloadReceipt[]
+  batches: IngestBatch[]
+}
+
+export interface TopologyEdge {
+  from_pid: string
+  to_pid: string
+  relation: string
+}

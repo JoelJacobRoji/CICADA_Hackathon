@@ -8,6 +8,7 @@ import { Trust } from './pages/Trust'
 import { Login } from './pages/Login'
 import { Infrastructure, Network } from './pages/MetricsPage'
 import { Overview } from './pages/Overview'
+import { Receipts } from './pages/Receipts'
 import { Security } from './pages/Security'
 import { Settings } from './pages/Settings'
 import { SourceDetail } from './pages/SourceDetail'
@@ -27,6 +28,7 @@ function Gate() {
         <Route path="incidents" element={<Incidents />} />
         <Route path="incidents/:id" element={<IncidentDetail />} />
         <Route path="trust" element={<Trust />} />
+        <Route path="receipts" element={<Receipts />} />
         <Route path="sources/:pid" element={<SourceDetail />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<p className="empty">Page not found. <Link to="/">Back to overview</Link></p>} />

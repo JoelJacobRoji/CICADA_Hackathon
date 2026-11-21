@@ -61,3 +61,33 @@ def test_receipt_requires_token_and_is_scoped(regions, seeded):
     # Unknown ID -> 404; malformed ID -> 422.
     assert api.get(_url("ap-south", uuid.uuid4()), headers=_auth(acme["token"])).status_code == 404
     assert api.get(_url("ap-south", "nope"), headers=_auth(acme["token"])).status_code == 422
+
+
+def test_operator_receipts_list_payloads_and_batches(regions, seeded):
+    """Egress receipts page: newest payload receipts (hash computed on arrival) + ingest batches."""
+    from saas_helpers import login
+
+    acme, initech = seeded["acme"], seeded["initech"]
+    api = TestClient(create_app())
+    items = [metric(acme["collector_id"], i) for i in range(3)] + [security(acme["collector_id"])]
+    assert post(api, acme["region"], acme["token"], items).status_code == 200
+
+    assert api.get("/api/v1/receipts").status_code == 401  # operator session required
+    login(api, acme)
+    body = api.get("/api/v1/receipts?limit=10&batches=5").json()
+    got = {p["payload_id"]: p for p in body["payloads"]}
+    for item in items:
+        p = got[str(item.payload_id)]
+        assert p["payload_sha256"] == hashlib.sha256(item.model_dump_json().encode()).hexdigest()
+        assert p["source_pid"] == item.source_pid
+    kinds = {p["kind"] for p in body["payloads"]}
+    assert {"metric_summary", "security_summary"} <= kinds
+    received = [p["received_at"] for p in body["payloads"]]
+    assert received == sorted(received, reverse=True)  # newest first
+    (batch,) = body["batches"]
+    assert batch["accepted"] == 4 and batch["duplicate"] == 0 and batch["rejected"] == 0
+    assert len(batch["body_sha256"]) == 64
+
+    other = TestClient(create_app())
+    login(other, initech)
+    assert other.get("/api/v1/receipts").json() == {"payloads": [], "batches": []}

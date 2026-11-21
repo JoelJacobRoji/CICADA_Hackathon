@@ -25,6 +25,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: '/security', label: 'Security signals' },
       { to: '/trust', label: 'Security & privacy' },
+      { to: '/receipts', label: 'Egress receipts' },
     ],
   },
   { group: 'Configuration', items: [{ to: '/settings', label: 'Thresholds' }] },

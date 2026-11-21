@@ -38,6 +38,16 @@ test('@live K36: incident figures (KPI cards + header pill) load within 5 s', as
   expect(cardMs).toBeLessThan(5_000)
 })
 
+test('@live egress receipts list real payload hashes and ingest batches', async ({ page }) => {
+  await signIn(page)
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Egress receipts' }).click()
+  await expect(page.getByRole('heading', { name: 'Egress receipts' })).toBeVisible()
+  const firstHash = page.getByRole('table', { name: 'Payload receipts' }).locator('tbody tr').first().locator('code[title]').last()
+  await expect(firstHash).toHaveAttribute('title', /^[0-9a-f]{64}$/, { timeout: 20_000 })
+  await expect(page.getByRole('table', { name: 'Ingest batches' }).locator('tbody tr').first()).toBeVisible()
+  await page.screenshot({ path: `${SHOTS}/egress-receipts.png`, fullPage: true })
+})
+
 test('@live sign in -> overview shows real health from the API, live connection', async ({ page }) => {
   await signIn(page)
   await expect(page.getByRole('status').filter({ hasText: 'Live' })).toBeVisible()

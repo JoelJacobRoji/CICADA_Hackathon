@@ -19,10 +19,12 @@ CPU, memory, disk, bandwidth, TCP-probe latency/loss; shown in the cloud only as
   - collector ledger SHA-256 equals what the SaaS stored, for **3,231 / 3,231** payloads
   - **Privacy Glass** (collector-local page): raw → masked → exact outbound JSON + SHA-256 → live SaaS
     receipt hash for any payload, plus a leak scan of every sent payload
+  - **Egress receipts** page in the dashboard: the SHA-256 the cloud computed for every recent payload, plus ingest batches
 - **AI engine:**
   - robust baselines (caught a CPU change the static threshold missed: z ≈ 30)
   - trend early warning (30 s before the threshold breaks)
-  - dependency-aware correlation (**18 alerts → 1 incident**) with probable cause and a cited playbook
+  - dependency-aware correlation (**18 alerts → 1 incident**) with probable cause and a cited playbook,
+    shown on a dependency graph in each incident's investigation view
   - Gemini explanations that must pass a grounding check
   - 0 false incidents in 100 clean minutes
 - **Device alerts:** incidents are pulled by the collector over its outbound connection, re-identified locally, and delivered to a local webhook.

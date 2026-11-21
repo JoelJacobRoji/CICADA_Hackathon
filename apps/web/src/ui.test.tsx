@@ -243,3 +243,116 @@ describe('Priority badge', () => {
     expect(icons.size).toBe(3)
   })
 })
+
+// ---------------------------------------------------------------- Step 2: graph, two-pane, receipts
+describe('Dependency graph layout', () => {
+  const s = (c: string) => 'src_' + c.repeat(16)
+  const APP = s('a'), SRV = s('b'), NET = s('c'), OTHER = s('d'), FAR = s('e')
+  const edges = [
+    { from_pid: APP, to_pid: SRV, relation: 'depends_on' },
+    { from_pid: APP, to_pid: NET, relation: 'routes_through' },
+    { from_pid: SRV, to_pid: NET, relation: 'routes_through' },
+    { from_pid: APP, to_pid: NET, relation: 'routes_through' }, // duplicate report
+    { from_pid: OTHER, to_pid: FAR, relation: 'depends_on' }, // unrelated to the incident
+  ]
+  it('puts dependents above upstream infrastructure, marks roles, ignores unrelated edges', async () => {
+    const { layoutGraph, NODE_W } = await import('./components/DepGraph')
+    const g = layoutGraph(edges, [APP, NET], NET)
+    const node = (id: string) => {
+      const n = g.nodes.find((x) => x.id === id)
+      if (!n) throw new Error(`missing node ${id}`)
+      return n
+    }
+    expect(g.nodes.map((n) => n.id).sort()).toEqual([APP, SRV, NET].sort())
+    expect(g.edges).toHaveLength(3)
+    expect(node(APP).y).toBeLessThan(node(SRV).y)
+    expect(node(SRV).y).toBeLessThan(node(NET).y)
+    expect(node(NET).role).toBe('root')
+    expect(node(APP).role).toBe('affected')
+    expect(node(SRV).role).toBe('related')
+    for (const a of g.nodes) for (const b of g.nodes) {
+      if (a !== b && a.y === b.y) expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(NODE_W)
+    }
+  })
+  it('survives a reported cycle and an incident without sources', async () => {
+    const { layoutGraph } = await import('./components/DepGraph')
+    const cyc = layoutGraph([{ from_pid: APP, to_pid: SRV, relation: 'depends_on' },
+      { from_pid: SRV, to_pid: APP, relation: 'depends_on' }], [APP], APP)
+    expect(cyc.nodes).toHaveLength(2)
+    expect(layoutGraph(edges, ['col_x_01'], 'col_x_01').nodes).toHaveLength(0)
+  })
+})
+
+describe('Incident center (two panes)', () => {
+  it('filters with counts, keeps one link per row and previews the selected incident', async () => {
+    const { Incidents } = await import('./pages/Incidents')
+    const now = new Date().toISOString()
+    const row = (id: string, status: string, title: string) => ({ id, status, priority: 'P1', score: 18, title,
+      root_entity: PID, opened_at: now, updated_at: now, resolved_at: null, acked_at: null, version: 1,
+      alert_count: 1, evidence_strength: 'High', affected_entities: [PID] })
+    mockFetch({
+      '/api/v1/incidents?': [row('i-1', 'open', 'Network device degraded'), row('i-2', 'resolved', 'Old incident')],
+      '/api/v1/incidents/i-1': incident(null),
+    })
+    const { container } = render(<MemoryRouter><Incidents /></MemoryRouter>)
+    const view = within(container)
+    expect(await view.findByText('Blast radius · 1 source')).toBeInTheDocument()
+    expect(view.getByText('Full investigation →')).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Open' })).toHaveAttribute('title', '1 incident(s)')
+    expect(view.getByRole('button', { name: 'All' })).toHaveAttribute('title', '2 incident(s)')
+    for (const r of view.getAllByRole('row').slice(1)) expect(within(r).getAllByRole('link')).toHaveLength(1)
+    await userEvent.click(view.getByRole('button', { name: 'Resolved' }))
+    expect(view.queryByText('Network device degraded')).not.toBeInTheDocument()
+    expect(view.getByText('Old incident')).toBeInTheDocument()
+  })
+})
+
+describe('Egress receipts', () => {
+  it('lists payload receipts with their arrival hash and sums the recent batches', async () => {
+    const { Receipts } = await import('./pages/Receipts')
+    const now = new Date().toISOString()
+    const sha = 'ab'.repeat(32)
+    mockFetch({
+      '/api/v1/receipts': {
+        payloads: [{ payload_id: '11111111-2222-4333-8444-555555555555', kind: 'security_summary', collector_id: 'col_x_01',
+          source_pid: PID, detail: 'AUTH_FAILURE_BURST', window_end: now, received_at: now, late: false, payload_sha256: sha }],
+        batches: [
+          { received_at: now, collector_id: 'col_x_01', batch_id: 'b1', accepted: 40, duplicate: 2, rejected: 0, body_sha256: sha },
+          { received_at: now, collector_id: 'col_x_01', batch_id: 'b2', accepted: 10, duplicate: 0, rejected: 0, body_sha256: sha },
+        ],
+      },
+    })
+    const { container } = render(<MemoryRouter><Receipts /></MemoryRouter>)
+    const view = within(container)
+    expect(await view.findByText('AUTH_FAILURE_BURST')).toBeInTheDocument()
+    expect(view.getAllByText(`${sha.slice(0, 16)}…`).length).toBe(3)
+    expect(view.getByText('50')).toBeInTheDocument() // accepted in the last 2 batches
+    expect(view.getByText('Accepted in last 2 batches')).toBeInTheDocument()
+    await userEvent.type(view.getByLabelText('Payload ID'), 'not-a-uuid')
+    await userEvent.click(view.getByRole('button', { name: 'Look up receipt' }))
+    expect(view.getByRole('alert')).toHaveTextContent('Enter a payload ID')
+  })
+})
+
+describe('Investigation view', () => {
+  it('shows the dependency graph with the probable cause marked, as a figure (not a chart)', async () => {
+    const { IncidentDetail } = await import('./pages/IncidentDetail')
+    const { Route, Routes } = await import('react-router-dom')
+    const APP = 'src_' + 'f'.repeat(16)
+    mockFetch({
+      '/api/v1/incidents/i-1': incident(null),
+      '/api/v1/topology': [{ from_pid: APP, to_pid: PID, relation: 'routes_through' }],
+    })
+    const { container } = render(
+      <MemoryRouter initialEntries={['/incidents/i-1']}>
+        <Routes><Route path="/incidents/:id" element={<IncidentDetail />} /></Routes>
+      </MemoryRouter>,
+    )
+    const view = within(container)
+    const fig = await view.findByRole('figure')
+    expect(fig.getAttribute('aria-label')).toMatch(/src_ab12cd… probable cause/)
+    expect(fig.getAttribute('aria-label')).toMatch(/src_ffffff… not alerting/)
+    expect(container.querySelectorAll('[role="img"]').length).toBe(0)
+    expect(view.getByText('Blast radius · 1')).toBeInTheDocument()
+  })
+})
